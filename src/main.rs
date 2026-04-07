@@ -129,26 +129,8 @@ impl Game for PongGame {
         let ball = match self.ball { Some(e) => e, None => return };
         let left_paddle = match self.left_paddle { Some(e) => e, None => return };
         let right_paddle = match self.right_paddle { Some(e) => e, None => return };
-        let left_goal = self.left_goal.unwrap();
-        let right_goal = self.right_goal.unwrap();
-
-        // ── Serving / game over input ──────────────────────────────────────────
-        if ctx.input.is_key_just_pressed(KeyCode::Space) {
-            match &self.state {
-                GameState::Serving { left_serves } => {
-                    let dir_x = if *left_serves { 1.0 } else { -1.0 };
-                    let dir = Vec2::new(dir_x, 0.5).normalize();
-                    self.physics.apply_impulse(ball, dir * BALL_INITIAL_SPEED);
-                    self.state = GameState::Playing;
-                }
-                GameState::GameOver { .. } => {
-                    self.score_left = 0;
-                    self.score_right = 0;
-                    self.reset_ball(&mut ctx.world, true);
-                }
-                GameState::Playing => {}
-            }
-        }
+        let left_goal = match self.left_goal { Some(e) => e, None => return };
+        let right_goal = match self.right_goal { Some(e) => e, None => return };
 
         // ── Left paddle (player: W/S) ──────────────────────────────────────────
         let mut left_dy = 0.0f32;
@@ -166,8 +148,26 @@ impl Game for PongGame {
         let new_right_y = (right_y + ai_dy * ctx.delta_time).clamp(-PADDLE_MAX_Y, PADDLE_MAX_Y);
         self.physics.physics_world_mut().set_kinematic_target(right_paddle, Vec2::new(PADDLE_X, new_right_y), 0.0);
 
-        // ── Physics step ──────────────────────────────────────────────────────
+        // ── Physics step (must run before serve so bodies are synced to rapier) ─
         self.physics.update(&mut ctx.world, ctx.delta_time);
+
+        // ── Serving / game over input (after physics so bodies exist in rapier) ─
+        if ctx.input.is_key_just_pressed(KeyCode::Space) {
+            match &self.state {
+                GameState::Serving { left_serves } => {
+                    let dir_x = if *left_serves { 1.0 } else { -1.0 };
+                    let dir = Vec2::new(dir_x, 0.5).normalize();
+                    self.physics.apply_impulse(ball, dir * BALL_INITIAL_SPEED);
+                    self.state = GameState::Playing;
+                }
+                GameState::GameOver { .. } => {
+                    self.score_left = 0;
+                    self.score_right = 0;
+                    self.reset_ball(true);
+                }
+                GameState::Playing => {}
+            }
+        }
 
         // ── Speed cap (prevents ball from accelerating indefinitely) ──────────
         if let Some((vel, _)) = self.physics.physics_world().get_body_velocity(ball) {
@@ -198,11 +198,11 @@ impl Game for PongGame {
 
         if right_scored {
             self.score_right += 1;
-            self.reset_ball(&mut ctx.world, false); // right side serves next
+            self.reset_ball(false); // right side serves next
         }
         if left_scored {
             self.score_left += 1;
-            self.reset_ball(&mut ctx.world, true); // left side serves next
+            self.reset_ball(true); // left side serves next
         }
 
         // ── Win condition ──────────────────────────────────────────────────────
@@ -243,7 +243,7 @@ impl Game for PongGame {
 }
 
 impl PongGame {
-    fn reset_ball(&mut self, _world: &mut World, left_serves: bool) {
+    fn reset_ball(&mut self, left_serves: bool) {
         if let Some(ball) = self.ball {
             self.physics.physics_world_mut().set_body_transform(ball, Vec2::ZERO, 0.0);
             self.physics.physics_world_mut().set_body_velocity(ball, Vec2::ZERO, 0.0);
