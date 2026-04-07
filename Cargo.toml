@@ -1,0 +1,8 @@
+[package]
+name = "pong"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+engine_core = { path = "../../insiculous_2d/crates/engine_core" }
+glam = { version = "0.30.10", features = ["serde"] }
