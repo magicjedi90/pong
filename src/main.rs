@@ -23,7 +23,6 @@ const BALL_SCALE: f32 = BALL_SIZE / UNIT;
 const BALL_RADIUS: f32 = BALL_SIZE / 2.0; // physics collider radius in world units
 const BALL_INITIAL_SPEED: f32 = 250.0;
 const BALL_MAX_SPEED: f32 = 500.0;
-const BALL_MIN_H_RATIO: f32 = 0.3; // horizontal must be at least 30% of total speed
 
 const WIN_SCORE: u32 = 7;
 
