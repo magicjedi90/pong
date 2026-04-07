@@ -15,8 +15,8 @@ const PADDLE_SCALE_X: f32 = PADDLE_W / UNIT;
 const PADDLE_SCALE_Y: f32 = PADDLE_H / UNIT;
 const PADDLE_X: f32 = 370.0;
 const PADDLE_MAX_Y: f32 = WIN_H / 2.0 - PADDLE_H / 2.0 - 10.0; // stay inside walls
-const PADDLE_SPEED: f32 = 300.0;
-const AI_SPEED: f32 = PADDLE_SPEED * 0.95; // high for testing — tune down once deflections work
+const PADDLE_SPEED: f32 = 450.0;
+const AI_SPEED: f32 = 300.0 * 0.85;
 
 const BALL_SIZE: f32 = 20.0;  // pixel diameter
 const BALL_SCALE: f32 = BALL_SIZE / UNIT;
@@ -28,9 +28,12 @@ const WIN_SCORE: u32 = 7;
 
 // ─── Game state ───────────────────────────────────────────────────────────────
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Side { Left, Right }
+
 #[derive(Debug, Clone, PartialEq)]
 enum GameState {
-    Serving { left_serves: bool },
+    Serving,
     Playing,
     GameOver { player_wins: bool },
 }
@@ -46,6 +49,7 @@ struct PongGame {
 
     score_left: u32,
     score_right: u32,
+    last_scorer: Side, // serve toward whoever scored last
     state: GameState,
     frame_count: u32, // cheap entropy for serve angle
 
@@ -63,7 +67,8 @@ impl Default for PongGame {
             right_goal: None,
             score_left: 0,
             score_right: 0,
-            state: GameState::Serving { left_serves: false }, // serve toward player first
+            last_scorer: Side::Right, // first serve goes toward player (left)
+            state: GameState::Serving,
             frame_count: 0,
             white_tex: 0,
         }
@@ -175,14 +180,16 @@ impl Game for PongGame {
         self.frame_count = self.frame_count.wrapping_add(1);
         if ctx.input.is_key_just_pressed(KeyCode::Space) {
             match &self.state {
-                GameState::Serving { left_serves } => {
-                    let dir_x = if *left_serves { 1.0 } else { -1.0 };
-                    // Randomize vertical angle using frame count as entropy.
-                    // Produces Y values in roughly -0.6..0.6, so the ball
-                    // doesn't always go the same direction.
-                    let hash = self.frame_count.wrapping_mul(2654435761); // Knuth multiplicative hash
-                    let t = ((hash >> 16) as f32) / 65535.0; // 0.0..1.0
-                    let dir_y = t * 1.2 - 0.6; // -0.6..0.6
+                GameState::Serving => {
+                    // Serve toward whoever scored last
+                    let dir_x = match self.last_scorer {
+                        Side::Left => -1.0,
+                        Side::Right => 1.0,
+                    };
+                    // Randomize vertical angle
+                    let hash = self.frame_count.wrapping_mul(2654435761);
+                    let t = ((hash >> 16) as f32) / 65535.0;
+                    let dir_y = t * 1.2 - 0.6;
                     let dir = Vec2::new(dir_x, dir_y).normalize();
                     self.physics.apply_impulse(ball, dir * BALL_INITIAL_SPEED);
                     self.state = GameState::Playing;
@@ -190,7 +197,8 @@ impl Game for PongGame {
                 GameState::GameOver { .. } => {
                     self.score_left = 0;
                     self.score_right = 0;
-                    self.reset_ball(true);
+                    self.last_scorer = Side::Right; // new game serves toward player
+                    self.reset_ball();
                 }
                 GameState::Playing => {}
             }
@@ -232,15 +240,17 @@ impl Game for PongGame {
 
         if right_scored {
             self.score_right += 1;
-            self.reset_ball(false); // right side serves next
+            self.last_scorer = Side::Right;
+            self.reset_ball();
         }
         if left_scored {
             self.score_left += 1;
-            self.reset_ball(true); // left side serves next
+            self.last_scorer = Side::Left;
+            self.reset_ball();
         }
 
         // ── Win condition ──────────────────────────────────────────────────────
-        if matches!(self.state, GameState::Playing | GameState::Serving { .. }) {
+        if matches!(self.state, GameState::Playing | GameState::Serving) {
             if self.score_left >= WIN_SCORE {
                 self.state = GameState::GameOver { player_wins: true };
             } else if self.score_right >= WIN_SCORE {
@@ -261,7 +271,7 @@ impl Game for PongGame {
 
         // State messages
         match &self.state {
-            GameState::Serving { .. } => {
+            GameState::Serving => {
                 ctx.ui.label("Press SPACE to serve", Vec2::new(cx - 88.0, cy - 10.0));
             }
             GameState::GameOver { player_wins } => {
@@ -277,12 +287,12 @@ impl Game for PongGame {
 }
 
 impl PongGame {
-    fn reset_ball(&mut self, left_serves: bool) {
+    fn reset_ball(&mut self) {
         if let Some(ball) = self.ball {
             self.physics.physics_world_mut().set_body_transform(ball, Vec2::ZERO, 0.0);
             self.physics.physics_world_mut().set_body_velocity(ball, Vec2::ZERO, 0.0);
         }
-        self.state = GameState::Serving { left_serves };
+        self.state = GameState::Serving;
     }
 }
 
