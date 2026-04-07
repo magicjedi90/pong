@@ -97,6 +97,11 @@ fn spawn_goal_sensor(world: &mut World, x: f32) -> EntityId {
 
 impl Game for PongGame {
     fn init(&mut self, ctx: &mut GameContext) {
+        // Load font for UI text
+        if let Ok(font) = ctx.ui.load_font_file("assets/fonts/font.ttf") {
+            ctx.ui.set_default_font(font);
+        }
+
         let tex = ctx.assets.create_solid_color(1, 1, [255, 255, 255, 255]).unwrap();
         self.white_tex = tex.id;
 
