@@ -16,12 +16,14 @@ const PADDLE_SCALE_Y: f32 = PADDLE_H / UNIT;
 const PADDLE_X: f32 = 370.0;
 const PADDLE_MAX_Y: f32 = WIN_H / 2.0 - PADDLE_H / 2.0 - 10.0; // stay inside walls
 const PADDLE_SPEED: f32 = 300.0;
+const AI_SPEED: f32 = PADDLE_SPEED * 0.7; // beatable but competent
 
 const BALL_SIZE: f32 = 20.0;  // pixel diameter
 const BALL_SCALE: f32 = BALL_SIZE / UNIT;
 const BALL_RADIUS: f32 = BALL_SIZE / 2.0; // physics collider radius in world units
 const BALL_INITIAL_SPEED: f32 = 250.0;
 const BALL_MAX_SPEED: f32 = 500.0;
+const BALL_MIN_H_RATIO: f32 = 0.3; // horizontal must be at least 30% of total speed
 
 const WIN_SCORE: u32 = 7;
 
@@ -157,7 +159,7 @@ impl Game for PongGame {
         let ball_y = ctx.world.get::<Transform2D>(ball).map(|t| t.position.y).unwrap_or(0.0);
         let right_y = ctx.world.get::<Transform2D>(right_paddle).map(|t| t.position.y).unwrap_or(0.0);
         let diff = ball_y - right_y;
-        let ai_dy = if diff.abs() > 5.0 { diff.signum() * PADDLE_SPEED } else { 0.0 };
+        let ai_dy = if diff.abs() > 5.0 { diff.signum() * AI_SPEED } else { 0.0 };
         let new_right_y = (right_y + ai_dy * ctx.delta_time).clamp(-PADDLE_MAX_Y, PADDLE_MAX_Y);
         self.physics.physics_world_mut().set_kinematic_target(right_paddle, Vec2::new(PADDLE_X, new_right_y), 0.0);
 
@@ -182,11 +184,32 @@ impl Game for PongGame {
             }
         }
 
-        // ── Speed cap (prevents ball from accelerating indefinitely) ──────────
+        // ── Ball velocity maintenance ─────────────────────────────────────────
         if let Some((vel, _)) = self.physics.physics_world().get_body_velocity(ball) {
             let speed = vel.length();
-            if speed > BALL_MAX_SPEED && speed > 0.0 {
-                self.physics.physics_world_mut().set_body_velocity(ball, vel.normalize() * BALL_MAX_SPEED, 0.0);
+            if speed > 0.1 {
+                let mut new_vel = vel;
+
+                // Enforce minimum horizontal speed ratio — prevents the ball
+                // from going nearly vertical after many wall bounces
+                let h_ratio = vel.x.abs() / speed;
+                if h_ratio < BALL_MIN_H_RATIO {
+                    let sign_x = if vel.x.abs() < 0.01 { 1.0f32 } else { vel.x.signum() };
+                    let sign_y = vel.y.signum();
+                    let min_hx = BALL_MIN_H_RATIO * speed;
+                    let remaining = (speed * speed - min_hx * min_hx).max(0.0).sqrt();
+                    new_vel = Vec2::new(sign_x * min_hx, sign_y * remaining);
+                }
+
+                // Speed cap
+                let new_speed = new_vel.length();
+                if new_speed > BALL_MAX_SPEED {
+                    new_vel = new_vel.normalize() * BALL_MAX_SPEED;
+                }
+
+                if new_vel != vel {
+                    self.physics.physics_world_mut().set_body_velocity(ball, new_vel, 0.0);
+                }
             }
         }
 
