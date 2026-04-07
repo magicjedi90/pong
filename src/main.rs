@@ -47,6 +47,7 @@ struct PongGame {
     score_left: u32,
     score_right: u32,
     state: GameState,
+    frame_count: u32, // cheap entropy for serve angle
 
     white_tex: u32,
 }
@@ -63,6 +64,7 @@ impl Default for PongGame {
             score_left: 0,
             score_right: 0,
             state: GameState::Serving { left_serves: true },
+            frame_count: 0,
             white_tex: 0,
         }
     }
@@ -170,11 +172,18 @@ impl Game for PongGame {
         self.physics.update(&mut ctx.world, ctx.delta_time);
 
         // ── Serving / game over input (after physics so bodies exist in rapier) ─
+        self.frame_count = self.frame_count.wrapping_add(1);
         if ctx.input.is_key_just_pressed(KeyCode::Space) {
             match &self.state {
                 GameState::Serving { left_serves } => {
                     let dir_x = if *left_serves { 1.0 } else { -1.0 };
-                    let dir = Vec2::new(dir_x, 0.5).normalize();
+                    // Randomize vertical angle using frame count as entropy.
+                    // Produces Y values in roughly -0.6..0.6, so the ball
+                    // doesn't always go the same direction.
+                    let hash = self.frame_count.wrapping_mul(2654435761); // Knuth multiplicative hash
+                    let t = ((hash >> 16) as f32) / 65535.0; // 0.0..1.0
+                    let dir_y = t * 1.2 - 0.6; // -0.6..0.6
+                    let dir = Vec2::new(dir_x, dir_y).normalize();
                     self.physics.apply_impulse(ball, dir * BALL_INITIAL_SPEED);
                     self.state = GameState::Playing;
                 }
