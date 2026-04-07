@@ -16,7 +16,7 @@ const PADDLE_SCALE_Y: f32 = PADDLE_H / UNIT;
 const PADDLE_X: f32 = 370.0;
 const PADDLE_MAX_Y: f32 = WIN_H / 2.0 - PADDLE_H / 2.0 - 10.0; // stay inside walls
 const PADDLE_SPEED: f32 = 300.0;
-const AI_SPEED: f32 = PADDLE_SPEED * 0.85; // beatable but competent
+const AI_SPEED: f32 = PADDLE_SPEED * 0.95; // high for testing — tune down once deflections work
 
 const BALL_SIZE: f32 = 20.0;  // pixel diameter
 const BALL_SCALE: f32 = BALL_SIZE / UNIT;
@@ -63,7 +63,7 @@ impl Default for PongGame {
             right_goal: None,
             score_left: 0,
             score_right: 0,
-            state: GameState::Serving { left_serves: true },
+            state: GameState::Serving { left_serves: false }, // serve toward player first
             frame_count: 0,
             white_tex: 0,
         }
