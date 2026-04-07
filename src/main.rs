@@ -5,14 +5,21 @@ use engine_core::prelude::*;
 const WIN_W: f32 = 800.0;
 const WIN_H: f32 = 600.0;
 
-const PADDLE_W: f32 = 20.0;
-const PADDLE_H: f32 = 120.0;
+// The renderer multiplies Transform2D.scale by 80 to get pixel size.
+// So scale = pixels / 80.
+const UNIT: f32 = 80.0;
+
+const PADDLE_W: f32 = 20.0;  // pixel width
+const PADDLE_H: f32 = 120.0; // pixel height
+const PADDLE_SCALE_X: f32 = PADDLE_W / UNIT;
+const PADDLE_SCALE_Y: f32 = PADDLE_H / UNIT;
 const PADDLE_X: f32 = 370.0;
 const PADDLE_MAX_Y: f32 = WIN_H / 2.0 - PADDLE_H / 2.0 - 10.0; // stay inside walls
 const PADDLE_SPEED: f32 = 300.0;
 
-const BALL_HALF: f32 = 10.0; // half-size for the square ball sprite
-const BALL_RADIUS: f32 = BALL_HALF;
+const BALL_SIZE: f32 = 20.0;  // pixel diameter
+const BALL_SCALE: f32 = BALL_SIZE / UNIT;
+const BALL_RADIUS: f32 = BALL_SIZE / 2.0; // physics collider radius in world units
 const BALL_INITIAL_SPEED: f32 = 250.0;
 const BALL_MAX_SPEED: f32 = 500.0;
 
@@ -64,7 +71,7 @@ impl Default for PongGame {
 
 fn spawn_paddle(world: &mut World, x: f32, tex: u32) -> EntityId {
     let entity = world.create_entity();
-    world.add_component(&entity, Transform2D::from_parts(Vec2::new(x, 0.0), 0.0, Vec2::new(PADDLE_W, PADDLE_H))).ok();
+    world.add_component(&entity, Transform2D::from_parts(Vec2::new(x, 0.0), 0.0, Vec2::new(PADDLE_SCALE_X, PADDLE_SCALE_Y))).ok();
     world.add_component(&entity, Sprite::new(tex)).ok();
     world.add_component(&entity, RigidBody::new_kinematic().with_rotation_locked(true)).ok();
     world.add_component(&entity, Collider::box_collider(PADDLE_W, PADDLE_H).with_friction(0.0).with_restitution(0.0)).ok();
@@ -99,7 +106,7 @@ impl Game for PongGame {
 
         // Ball (dynamic, zero gravity, CCD so it doesn't tunnel through paddles)
         let ball = ctx.world.create_entity();
-        ctx.world.add_component(&ball, Transform2D::from_parts(Vec2::ZERO, 0.0, Vec2::splat(BALL_HALF * 2.0))).ok();
+        ctx.world.add_component(&ball, Transform2D::from_parts(Vec2::ZERO, 0.0, Vec2::splat(BALL_SCALE))).ok();
         ctx.world.add_component(&ball, Sprite::new(tex.id)).ok();
         ctx.world.add_component(&ball,
             RigidBody::new_dynamic()
