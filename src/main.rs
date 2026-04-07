@@ -16,7 +16,7 @@ const PADDLE_SCALE_Y: f32 = PADDLE_H / UNIT;
 const PADDLE_X: f32 = 370.0;
 const PADDLE_MAX_Y: f32 = WIN_H / 2.0 - PADDLE_H / 2.0 - 10.0; // stay inside walls
 const PADDLE_SPEED: f32 = 300.0;
-const AI_SPEED: f32 = PADDLE_SPEED * 0.7; // beatable but competent
+const AI_SPEED: f32 = PADDLE_SPEED * 0.85; // beatable but competent
 
 const BALL_SIZE: f32 = 20.0;  // pixel diameter
 const BALL_SCALE: f32 = BALL_SIZE / UNIT;
@@ -75,7 +75,7 @@ fn spawn_paddle(world: &mut World, x: f32, tex: u32) -> EntityId {
     world.add_component(&entity, Transform2D::from_parts(Vec2::new(x, 0.0), 0.0, Vec2::new(PADDLE_SCALE_X, PADDLE_SCALE_Y))).ok();
     world.add_component(&entity, Sprite::new(tex)).ok();
     world.add_component(&entity, RigidBody::new_kinematic().with_rotation_locked(true)).ok();
-    world.add_component(&entity, Collider::box_collider(PADDLE_W, PADDLE_H).with_friction(0.0).with_restitution(0.0)).ok();
+    world.add_component(&entity, Collider::box_collider(PADDLE_W, PADDLE_H).with_friction(0.0).with_restitution(1.0)).ok();
     entity
 }
 
@@ -145,10 +145,14 @@ impl Game for PongGame {
         let left_goal = match self.left_goal { Some(e) => e, None => return };
         let right_goal = match self.right_goal { Some(e) => e, None => return };
 
-        // ── Left paddle (player: W/S) ──────────────────────────────────────────
+        // ── Left paddle (player: W/S or Up/Down arrows) ───────────────────────
         let mut left_dy = 0.0f32;
-        if ctx.input.is_key_pressed(KeyCode::KeyW) { left_dy = PADDLE_SPEED; }
-        if ctx.input.is_key_pressed(KeyCode::KeyS) { left_dy = -PADDLE_SPEED; }
+        if ctx.input.is_key_pressed(KeyCode::KeyW) || ctx.input.is_key_pressed(KeyCode::ArrowUp) {
+            left_dy = PADDLE_SPEED;
+        }
+        if ctx.input.is_key_pressed(KeyCode::KeyS) || ctx.input.is_key_pressed(KeyCode::ArrowDown) {
+            left_dy = -PADDLE_SPEED;
+        }
 
         let left_y = ctx.world.get::<Transform2D>(left_paddle).map(|t| t.position.y).unwrap_or(0.0);
         let new_left_y = (left_y + left_dy * ctx.delta_time).clamp(-PADDLE_MAX_Y, PADDLE_MAX_Y);
@@ -158,7 +162,7 @@ impl Game for PongGame {
         let ball_y = ctx.world.get::<Transform2D>(ball).map(|t| t.position.y).unwrap_or(0.0);
         let right_y = ctx.world.get::<Transform2D>(right_paddle).map(|t| t.position.y).unwrap_or(0.0);
         let diff = ball_y - right_y;
-        let ai_dy = if diff.abs() > 5.0 { diff.signum() * AI_SPEED } else { 0.0 };
+        let ai_dy = if diff.abs() > 2.0 { diff.signum() * AI_SPEED } else { 0.0 };
         let new_right_y = (right_y + ai_dy * ctx.delta_time).clamp(-PADDLE_MAX_Y, PADDLE_MAX_Y);
         self.physics.physics_world_mut().set_kinematic_target(right_paddle, Vec2::new(PADDLE_X, new_right_y), 0.0);
 
