@@ -185,29 +185,15 @@ impl Game for PongGame {
         }
 
         // ── Ball velocity maintenance ─────────────────────────────────────────
+        // Keep horizontal speed constant at BALL_INITIAL_SPEED — only the
+        // vertical component varies (from bounce angles). This prevents
+        // slowdown after paddle deflections and keeps rallies snappy.
         if let Some((vel, _)) = self.physics.physics_world().get_body_velocity(ball) {
-            let speed = vel.length();
-            if speed > 0.1 {
-                let mut new_vel = vel;
-
-                // Enforce minimum horizontal speed ratio — prevents the ball
-                // from going nearly vertical after many wall bounces
-                let h_ratio = vel.x.abs() / speed;
-                if h_ratio < BALL_MIN_H_RATIO {
-                    let sign_x = if vel.x.abs() < 0.01 { 1.0f32 } else { vel.x.signum() };
-                    let sign_y = vel.y.signum();
-                    let min_hx = BALL_MIN_H_RATIO * speed;
-                    let remaining = (speed * speed - min_hx * min_hx).max(0.0).sqrt();
-                    new_vel = Vec2::new(sign_x * min_hx, sign_y * remaining);
-                }
-
-                // Speed cap
-                let new_speed = new_vel.length();
-                if new_speed > BALL_MAX_SPEED {
-                    new_vel = new_vel.normalize() * BALL_MAX_SPEED;
-                }
-
-                if new_vel != vel {
+            if vel.x.abs() > 0.1 {
+                let fixed_vx = vel.x.signum() * BALL_INITIAL_SPEED;
+                let vy = vel.y.clamp(-BALL_MAX_SPEED, BALL_MAX_SPEED);
+                let new_vel = Vec2::new(fixed_vx, vy);
+                if (new_vel - vel).length() > 1.0 {
                     self.physics.physics_world_mut().set_body_velocity(ball, new_vel, 0.0);
                 }
             }
