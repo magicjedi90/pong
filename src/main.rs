@@ -153,10 +153,11 @@ impl Game for PongGame {
         let new_left_y = (left_y + left_dy * ctx.delta_time).clamp(-PADDLE_MAX_Y, PADDLE_MAX_Y);
         self.physics.physics_world_mut().set_kinematic_target(left_paddle, Vec2::new(-PADDLE_X, new_left_y), 0.0);
 
-        // ── Right paddle (AI: tracks ball Y) ──────────────────────────────────
+        // ── Right paddle (AI: tracks ball Y at full speed) ─────────────────
         let ball_y = ctx.world.get::<Transform2D>(ball).map(|t| t.position.y).unwrap_or(0.0);
         let right_y = ctx.world.get::<Transform2D>(right_paddle).map(|t| t.position.y).unwrap_or(0.0);
-        let ai_dy = (ball_y - right_y).clamp(-PADDLE_SPEED, PADDLE_SPEED);
+        let diff = ball_y - right_y;
+        let ai_dy = if diff.abs() > 5.0 { diff.signum() * PADDLE_SPEED } else { 0.0 };
         let new_right_y = (right_y + ai_dy * ctx.delta_time).clamp(-PADDLE_MAX_Y, PADDLE_MAX_Y);
         self.physics.physics_world_mut().set_kinematic_target(right_paddle, Vec2::new(PADDLE_X, new_right_y), 0.0);
 
