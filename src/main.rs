@@ -2,6 +2,7 @@ mod constants;
 mod drawing;
 mod gameplay;
 mod menu;
+mod powerups;
 mod spawning;
 mod types;
 
@@ -17,9 +18,10 @@ impl Game for PongGame {
         }
 
         let tex = ctx.assets.create_solid_color(1, 1, [255, 255, 255, 255]).unwrap();
+        self.tex_id = tex.id;
 
-        self.left_paddle = Some(spawn_paddle(&mut ctx.world, -PADDLE_X, tex.id));
-        self.right_paddle = Some(spawn_paddle(&mut ctx.world, PADDLE_X, tex.id));
+        self.left_paddle = Some(spawn_paddle(&mut ctx.world, -PADDLE_X, tex.id, LEFT_COLOR));
+        self.right_paddle = Some(spawn_paddle(&mut ctx.world, PADDLE_X, tex.id, RIGHT_COLOR));
         self.ball = Some(self.spawn_ball(&mut ctx.world, tex.id));
 
         let wall_y = WIN_H / 2.0 - 10.0;

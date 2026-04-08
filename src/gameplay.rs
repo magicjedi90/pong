@@ -15,11 +15,15 @@ impl PongGame {
         self.update_left_paddle(ctx, left_paddle);
         self.update_right_paddle(ctx, right_paddle, ball);
         self.physics.update(&mut ctx.world, ctx.delta_time);
+        self.flush_pending_launches();
 
         self.handle_gameplay_input(ctx, ball);
-        self.maintain_ball_velocity(ball);
-        self.check_goals(ball);
-        self.check_win_condition();
+        self.maintain_all_ball_velocities();
+        self.check_goals(ctx);
+        self.check_powerup_collisions(ctx);
+        self.update_powerup_spawns(ctx);
+        self.update_speed_boost(ctx.delta_time);
+        self.check_win_condition(&mut ctx.world);
     }
 
     fn update_left_paddle(&mut self, ctx: &GameContext, paddle: EntityId) {
@@ -74,8 +78,7 @@ impl PongGame {
         match &self.state {
             GameState::Serving => {
                 if ctx.input.is_key_just_pressed(KeyCode::Escape) {
-                    self.reset_positions();
-                    self.state = GameState::TitleScreen { selection: 0 };
+                    self.reset_to_title(&mut ctx.world);
                 } else if ctx.input.is_key_just_pressed(KeyCode::Space) {
                     let dir_x = match self.last_scorer {
                         Side::Left => -1.0,
@@ -93,11 +96,19 @@ impl PongGame {
                 if ctx.input.is_key_just_pressed(KeyCode::Space) {
                     self.start_game();
                 } else if ctx.input.is_key_just_pressed(KeyCode::Escape) {
-                    self.reset_positions();
-                    self.state = GameState::TitleScreen { selection: 0 };
+                    self.reset_to_title(&mut ctx.world);
                 }
             }
             _ => {}
+        }
+    }
+
+    fn maintain_all_ball_velocities(&mut self) {
+        let all_balls: Vec<EntityId> = self.ball.into_iter()
+            .chain(self.extra_balls.iter().copied())
+            .collect();
+        for ball in all_balls {
+            self.maintain_ball_velocity(ball);
         }
     }
 
@@ -105,8 +116,19 @@ impl PongGame {
         let Some((vel, _)) = self.physics.get_body_velocity(ball) else { return };
         if vel.x.abs() < 0.1 { return; }
 
-        let fixed_vx = vel.x.signum() * BALL_INITIAL_SPEED;
-        let vy = vel.y.clamp(-BALL_MAX_SPEED, BALL_MAX_SPEED);
+        let speed = if self.speed_boost_timer > 0.0 {
+            BALL_INITIAL_SPEED * SPEED_BOOST_MULTIPLIER
+        } else {
+            BALL_INITIAL_SPEED
+        };
+        let max_vy = if self.speed_boost_timer > 0.0 {
+            BALL_MAX_SPEED * SPEED_BOOST_MULTIPLIER
+        } else {
+            BALL_MAX_SPEED
+        };
+
+        let fixed_vx = vel.x.signum() * speed;
+        let vy = vel.y.clamp(-max_vy, max_vy);
         let new_vel = Vec2::new(fixed_vx, vy);
 
         if (new_vel - vel).length() > 1.0 {
@@ -114,45 +136,101 @@ impl PongGame {
         }
     }
 
-    fn check_goals(&mut self, ball: EntityId) {
+    fn check_goals(&mut self, ctx: &mut GameContext) {
         let left_goal = match self.left_goal { Some(e) => e, None => return };
         let right_goal = match self.right_goal { Some(e) => e, None => return };
+        let left_paddle = match self.left_paddle { Some(e) => e, None => return };
+        let right_paddle = match self.right_paddle { Some(e) => e, None => return };
 
-        let mut scored: Option<Side> = None;
+        let all_balls: Vec<EntityId> = self.ball.into_iter()
+            .chain(self.extra_balls.iter().copied())
+            .collect();
+
+        // Collect scoring events and paddle touches
+        let mut balls_scored: Vec<(EntityId, Side)> = Vec::new();
         for collision in self.physics.collision_events() {
             if !collision.event.started { continue; }
-            if collision.event.involves(ball, left_goal) {
-                scored = Some(Side::Right);
-            } else if collision.event.involves(ball, right_goal) {
-                scored = Some(Side::Left);
+            for &b in &all_balls {
+                if collision.event.involves(b, left_paddle) {
+                    self.last_touch = Some(Side::Left);
+                    if let Some(sprite) = ctx.world.get_mut::<Sprite>(b) {
+                        sprite.color = LEFT_COLOR;
+                    }
+                } else if collision.event.involves(b, right_paddle) {
+                    self.last_touch = Some(Side::Right);
+                    if let Some(sprite) = ctx.world.get_mut::<Sprite>(b) {
+                        sprite.color = RIGHT_COLOR;
+                    }
+                }
+                if collision.event.involves(b, left_goal) {
+                    balls_scored.push((b, Side::Right));
+                } else if collision.event.involves(b, right_goal) {
+                    balls_scored.push((b, Side::Left));
+                }
             }
         }
 
-        if let Some(side) = scored {
+        // Process scored balls
+        for (ball_id, side) in &balls_scored {
             match side {
                 Side::Left => self.score_left += 1,
                 Side::Right => self.score_right += 1,
             }
-            self.last_scorer = side;
-            self.reset_ball();
+            self.last_scorer = *side;
+
+            if Some(*ball_id) == self.ball {
+                // Primary ball scored — promote an extra if available
+                if let Some(promoted) = self.extra_balls.pop() {
+                    self.ball = Some(promoted);
+                } else {
+                    self.ball = None;
+                }
+                // Destroy the old primary
+                ctx.world.remove_entity(ball_id).ok();
+                self.physics.physics_world_mut().remove_entity(*ball_id);
+            } else {
+                // Extra ball scored — just destroy it
+                self.destroy_extra_ball(&mut ctx.world, *ball_id);
+            }
+        }
+
+        // If no balls remain, reset to serving
+        if self.ball.is_none() && self.extra_balls.is_empty() && !balls_scored.is_empty() {
+            self.destroy_all_powerups(&mut ctx.world);
+            self.speed_boost_timer = 0.0;
+            self.last_touch = None;
+            // Spawn a fresh primary ball
+            self.ball = Some(self.spawn_ball(&mut ctx.world, self.tex_id));
+            self.physics.reset_body(self.ball.unwrap(), Vec2::ZERO);
+            self.state = GameState::Serving;
         }
     }
 
-    fn check_win_condition(&mut self) {
+    fn check_win_condition(&mut self, world: &mut World) {
         if !matches!(self.state, GameState::Playing | GameState::Serving) { return; }
 
-        if self.score_left >= WIN_SCORE {
-            self.state = GameState::GameOver { left_wins: true };
+        let winner = if self.score_left >= WIN_SCORE {
+            Some(true)
         } else if self.score_right >= WIN_SCORE {
-            self.state = GameState::GameOver { left_wins: false };
+            Some(false)
+        } else {
+            None
+        };
+
+        if let Some(left_wins) = winner {
+            self.destroy_all_extra_balls(world);
+            self.destroy_all_powerups(world);
+            self.speed_boost_timer = 0.0;
+            self.state = GameState::GameOver { left_wins };
         }
     }
 
-    fn reset_ball(&mut self) {
-        if let Some(ball) = self.ball {
-            self.physics.reset_body(ball, Vec2::ZERO);
-        }
-        self.state = GameState::Serving;
+    fn reset_to_title(&mut self, world: &mut World) {
+        self.destroy_all_extra_balls(world);
+        self.destroy_all_powerups(world);
+        self.speed_boost_timer = 0.0;
+        self.reset_positions();
+        self.state = GameState::TitleScreen { selection: 0 };
     }
 
     pub(crate) fn update_entity_visibility(&self, ctx: &mut GameContext) {
@@ -160,7 +238,10 @@ impl PongGame {
             GameState::TitleScreen { .. } | GameState::DifficultySelect { .. } => 0.0,
             _ => 1.0,
         };
-        for entity in [self.ball, self.left_paddle, self.right_paddle].into_iter().flatten() {
+        let entities = [self.ball, self.left_paddle, self.right_paddle].into_iter().flatten()
+            .chain(self.extra_balls.iter().copied())
+            .chain(self.active_powerups.iter().map(|p| p.entity));
+        for entity in entities {
             if let Some(sprite) = ctx.world.get_mut::<Sprite>(entity) {
                 sprite.color.w = alpha;
             }

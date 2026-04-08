@@ -49,6 +49,13 @@ impl PongGame {
         };
         ctx.ui.label_centered(&score_text, Vec2::new(cx, 24.0));
 
+        if self.speed_boost_timer > 0.0 {
+            ctx.ui.label_centered(
+                &format!("SPEED BOOST {:.1}s", self.speed_boost_timer),
+                Vec2::new(cx, 48.0),
+            );
+        }
+
         match &self.state {
             GameState::Serving => {
                 ctx.ui.label_centered("Press SPACE to serve", Vec2::new(cx, cy - 50.0));

@@ -63,6 +63,10 @@ impl PongGame {
         self.score_left = 0;
         self.score_right = 0;
         self.last_scorer = Side::Right;
+        self.extra_balls.clear();
+        self.active_powerups.clear();
+        self.speed_boost_timer = 0.0;
+        self.powerup_spawn_timer = crate::constants::POWERUP_INITIAL_DELAY;
         self.reset_positions();
         self.state = GameState::Serving;
     }

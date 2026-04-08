@@ -2,10 +2,10 @@ use engine_core::prelude::*;
 use crate::constants::*;
 use crate::types::PongGame;
 
-pub(crate) fn spawn_paddle(world: &mut World, x: f32, tex: u32) -> EntityId {
+pub(crate) fn spawn_paddle(world: &mut World, x: f32, tex: u32, color: Vec4) -> EntityId {
     world.spawn()
         .with(Transform2D::from_parts(Vec2::new(x, 0.0), 0.0, PADDLE_SCALE))
-        .with(Sprite::new(tex))
+        .with(Sprite::new(tex).with_color(color))
         .with(RigidBody::new_kinematic().with_rotation_locked(true))
         .with(Collider::box_collider(PADDLE_W, PADDLE_H).with_friction(0.0).with_restitution(1.0))
         .id()

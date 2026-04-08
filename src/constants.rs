@@ -20,3 +20,17 @@ pub(crate) const BALL_INITIAL_SPEED: f32 = 250.0;
 pub(crate) const BALL_MAX_SPEED: f32 = 500.0;
 
 pub(crate) const WIN_SCORE: u32 = 7;
+
+pub(crate) const LEFT_COLOR: Vec4 = Vec4::new(1.0, 0.3, 0.3, 1.0);
+pub(crate) const RIGHT_COLOR: Vec4 = Vec4::new(0.3, 0.5, 1.0, 1.0);
+// Power-ups
+pub(crate) const POWERUP_SIZE: f32 = 24.0;
+pub(crate) const POWERUP_SCALE: f32 = POWERUP_SIZE / RENDER_UNIT;
+pub(crate) const SPEED_BOOST_COLOR: Vec4 = Vec4::new(0.2, 1.0, 0.3, 1.0);
+pub(crate) const MULTIBALL_COLOR: Vec4 = Vec4::new(1.0, 1.0, 0.2, 1.0);
+pub(crate) const SPEED_BOOST_DURATION: f32 = 5.0;
+pub(crate) const SPEED_BOOST_MULTIPLIER: f32 = 1.8;
+pub(crate) const POWERUP_SPAWN_MIN: f32 = 5.0;
+pub(crate) const POWERUP_SPAWN_MAX: f32 = 12.0;
+pub(crate) const POWERUP_INITIAL_DELAY: f32 = 8.0;
+pub(crate) const MAX_POWERUPS: usize = 3;
