@@ -51,8 +51,8 @@ impl PongGame {
 
         match &self.state {
             GameState::Serving => {
-                ctx.ui.label_centered("Press SPACE to serve", Vec2::new(cx, cy - 20.0));
-                ctx.ui.label_centered("ESC for title screen", Vec2::new(cx, cy + 6.0));
+                ctx.ui.label_centered("Press SPACE to serve", Vec2::new(cx, cy - 50.0));
+                ctx.ui.label_centered("ESC for title screen", Vec2::new(cx, cy - 24.0));
             }
             GameState::GameOver { left_wins } => {
                 let msg = match (self.mode, *left_wins) {
@@ -61,9 +61,9 @@ impl PongGame {
                     (GameMode::TwoPlayer, true) => "PLAYER 1 WINS!",
                     (GameMode::TwoPlayer, false) => "PLAYER 2 WINS!",
                 };
-                ctx.ui.label_centered(msg, Vec2::new(cx, cy - 30.0));
-                ctx.ui.label_centered("SPACE to play again", Vec2::new(cx, cy));
-                ctx.ui.label_centered("ESC for title screen", Vec2::new(cx, cy + 26.0));
+                ctx.ui.label_centered(msg, Vec2::new(cx, cy - 60.0));
+                ctx.ui.label_centered("SPACE to play again", Vec2::new(cx, cy - 34.0));
+                ctx.ui.label_centered("ESC for title screen", Vec2::new(cx, cy - 8.0));
             }
             _ => {}
         }

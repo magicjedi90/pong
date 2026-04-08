@@ -155,6 +155,18 @@ impl PongGame {
         self.state = GameState::Serving;
     }
 
+    pub(crate) fn update_entity_visibility(&self, ctx: &mut GameContext) {
+        let alpha = match self.state {
+            GameState::TitleScreen { .. } | GameState::DifficultySelect { .. } => 0.0,
+            _ => 1.0,
+        };
+        for entity in [self.ball, self.left_paddle, self.right_paddle].into_iter().flatten() {
+            if let Some(sprite) = ctx.world.get_mut::<Sprite>(entity) {
+                sprite.color.w = alpha;
+            }
+        }
+    }
+
     pub(crate) fn reset_positions(&mut self) {
         if let Some(ball) = self.ball {
             self.physics.reset_body(ball, Vec2::ZERO);

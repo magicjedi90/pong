@@ -40,6 +40,7 @@ impl Game for PongGame {
             _ => self.update_gameplay(ctx),
         }
 
+        self.update_entity_visibility(ctx);
         self.draw_ui(ctx);
     }
 }
