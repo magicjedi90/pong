@@ -6,11 +6,6 @@ fn entity_y(world: &World, entity: EntityId) -> f32 {
     world.get::<Transform2D>(entity).map(|t| t.position.y).unwrap_or(0.0)
 }
 
-fn collision_involves(event: &CollisionEvent, a: EntityId, b: EntityId) -> bool {
-    (event.entity_a == a && event.entity_b == b)
-        || (event.entity_a == b && event.entity_b == a)
-}
-
 impl PongGame {
     pub(crate) fn update_gameplay(&mut self, ctx: &mut GameContext) {
         let ball = match self.ball { Some(e) => e, None => return };
@@ -45,7 +40,7 @@ impl PongGame {
         };
         let y = entity_y(&ctx.world, paddle);
         let new_y = (y + dy * ctx.delta_time).clamp(-PADDLE_MAX_Y, PADDLE_MAX_Y);
-        self.physics.physics_world_mut().set_kinematic_target(paddle, Vec2::new(-PADDLE_X, new_y), 0.0);
+        self.physics.set_kinematic_target(paddle, Vec2::new(-PADDLE_X, new_y), 0.0);
     }
 
     fn update_right_paddle(&mut self, ctx: &GameContext, paddle: EntityId, ball: EntityId) {
@@ -58,7 +53,7 @@ impl PongGame {
                 let dead_zone = self.difficulty.ai_dead_zone();
                 let dy = if diff.abs() > dead_zone { diff.signum() * speed } else { 0.0 };
                 let new_y = (paddle_y + dy * ctx.delta_time).clamp(-PADDLE_MAX_Y, PADDLE_MAX_Y);
-                self.physics.physics_world_mut().set_kinematic_target(paddle, Vec2::new(PADDLE_X, new_y), 0.0);
+                self.physics.set_kinematic_target(paddle, Vec2::new(PADDLE_X, new_y), 0.0);
             }
             GameMode::TwoPlayer => {
                 let up = ctx.input.is_key_pressed(KeyCode::ArrowUp);
@@ -70,7 +65,7 @@ impl PongGame {
                 };
                 let y = entity_y(&ctx.world, paddle);
                 let new_y = (y + dy * ctx.delta_time).clamp(-PADDLE_MAX_Y, PADDLE_MAX_Y);
-                self.physics.physics_world_mut().set_kinematic_target(paddle, Vec2::new(PADDLE_X, new_y), 0.0);
+                self.physics.set_kinematic_target(paddle, Vec2::new(PADDLE_X, new_y), 0.0);
             }
         }
     }
@@ -107,7 +102,7 @@ impl PongGame {
     }
 
     fn maintain_ball_velocity(&mut self, ball: EntityId) {
-        let Some((vel, _)) = self.physics.physics_world().get_body_velocity(ball) else { return };
+        let Some((vel, _)) = self.physics.get_body_velocity(ball) else { return };
         if vel.x.abs() < 0.1 { return; }
 
         let fixed_vx = vel.x.signum() * BALL_INITIAL_SPEED;
@@ -115,7 +110,7 @@ impl PongGame {
         let new_vel = Vec2::new(fixed_vx, vy);
 
         if (new_vel - vel).length() > 1.0 {
-            self.physics.physics_world_mut().set_body_velocity(ball, new_vel, 0.0);
+            self.physics.set_body_velocity(ball, new_vel, 0.0);
         }
     }
 
@@ -126,9 +121,9 @@ impl PongGame {
         let mut scored: Option<Side> = None;
         for collision in self.physics.collision_events() {
             if !collision.event.started { continue; }
-            if collision_involves(&collision.event, ball, left_goal) {
+            if collision.event.involves(ball, left_goal) {
                 scored = Some(Side::Right);
-            } else if collision_involves(&collision.event, ball, right_goal) {
+            } else if collision.event.involves(ball, right_goal) {
                 scored = Some(Side::Left);
             }
         }
@@ -155,22 +150,20 @@ impl PongGame {
 
     fn reset_ball(&mut self) {
         if let Some(ball) = self.ball {
-            self.physics.physics_world_mut().set_body_transform(ball, Vec2::ZERO, 0.0);
-            self.physics.physics_world_mut().set_body_velocity(ball, Vec2::ZERO, 0.0);
+            self.physics.reset_body(ball, Vec2::ZERO);
         }
         self.state = GameState::Serving;
     }
 
     pub(crate) fn reset_positions(&mut self) {
         if let Some(ball) = self.ball {
-            self.physics.physics_world_mut().set_body_transform(ball, Vec2::ZERO, 0.0);
-            self.physics.physics_world_mut().set_body_velocity(ball, Vec2::ZERO, 0.0);
+            self.physics.reset_body(ball, Vec2::ZERO);
         }
         if let Some(lp) = self.left_paddle {
-            self.physics.physics_world_mut().set_kinematic_target(lp, Vec2::new(-PADDLE_X, 0.0), 0.0);
+            self.physics.set_kinematic_target(lp, Vec2::new(-PADDLE_X, 0.0), 0.0);
         }
         if let Some(rp) = self.right_paddle {
-            self.physics.physics_world_mut().set_kinematic_target(rp, Vec2::new(PADDLE_X, 0.0), 0.0);
+            self.physics.set_kinematic_target(rp, Vec2::new(PADDLE_X, 0.0), 0.0);
         }
     }
 }
