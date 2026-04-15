@@ -153,11 +153,52 @@ impl PongGame {
         let left_paddle = match self.left_paddle { Some(e) => e, None => return };
         let right_paddle = match self.right_paddle { Some(e) => e, None => return };
 
+        let initial_balls: Vec<EntityId> = self.ball.into_iter()
+            .chain(self.extra_balls.iter().copied())
+            .collect();
+
+        // Safety net: any ball whose transform escaped the playfield (or went
+        // NaN/infinite) counts as scored for the opposite side. At extreme
+        // Insane-mode speeds a ball can tunnel past the goal sensor before
+        // Rapier emits an intersection event. Tear these down IMMEDIATELY so
+        // the rest of the frame (collision loop, paddle-hit boosts, powerup
+        // checks) never operates on an already-dead ball. Tracked by a bool
+        // rather than the `balls_scored` list below so we don't double-score.
+        let mut any_escape_scored = false;
+        let bound_x = WIN_W / 2.0 + 60.0;
+        let bound_y = WIN_H / 2.0 + 60.0;
+        for &b in &initial_balls {
+            let Some(transform) = ctx.world.get::<Transform2D>(b) else { continue };
+            let pos = transform.position;
+            let escaped = !pos.x.is_finite()
+                || !pos.y.is_finite()
+                || pos.x.abs() > bound_x
+                || pos.y.abs() > bound_y;
+            if !escaped { continue; }
+
+            let side = if pos.x >= 0.0 { Side::Left } else { Side::Right };
+            match side {
+                Side::Left => self.score_left += 1,
+                Side::Right => self.score_right += 1,
+            }
+            self.last_scorer = side;
+            self.ball_speed_mult.remove(&b);
+
+            if Some(b) == self.ball {
+                self.ball = self.extra_balls.pop();
+            } else {
+                self.extra_balls.retain(|&e| e != b);
+            }
+            self.physics.destroy_entity(&mut ctx.world, b);
+            any_escape_scored = true;
+        }
+
+        // Rebuild the working set after escape cleanup so subsequent logic
+        // never sees the torn-down balls.
         let all_balls: Vec<EntityId> = self.ball.into_iter()
             .chain(self.extra_balls.iter().copied())
             .collect();
 
-        // Collect scoring events and paddle touches
         let mut balls_scored: Vec<(EntityId, Side)> = Vec::new();
         let insane = self.chaos_mode.is_insane();
         let mut paddle_hits: Vec<EntityId> = Vec::new();
@@ -181,10 +222,13 @@ impl PongGame {
                 if hit_paddle && insane {
                     paddle_hits.push(b);
                 }
-                if collision.event.involves(b, left_goal) {
-                    balls_scored.push((b, Side::Right));
-                } else if collision.event.involves(b, right_goal) {
-                    balls_scored.push((b, Side::Left));
+                let already_scored = balls_scored.iter().any(|(bb, _)| *bb == b);
+                if !already_scored {
+                    if collision.event.involves(b, left_goal) {
+                        balls_scored.push((b, Side::Right));
+                    } else if collision.event.involves(b, right_goal) {
+                        balls_scored.push((b, Side::Left));
+                    }
                 }
             }
         }
@@ -224,7 +268,10 @@ impl PongGame {
         }
 
         // If no balls remain, reset to serving
-        if self.ball.is_none() && self.extra_balls.is_empty() && !balls_scored.is_empty() {
+        if self.ball.is_none()
+            && self.extra_balls.is_empty()
+            && (any_escape_scored || !balls_scored.is_empty())
+        {
             self.destroy_all_powerups(&mut ctx.world);
             self.speed_boost_timer = 0.0;
             self.last_touch = None;
