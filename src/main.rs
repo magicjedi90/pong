@@ -1,3 +1,4 @@
+mod achievements;
 mod chaos_theme;
 mod constants;
 mod drawing;
@@ -18,6 +19,8 @@ impl Game for PongGame {
         if let Ok(font) = ctx.ui.load_font_file("assets/fonts/font.ttf") {
             ctx.ui.set_default_font(font);
         }
+
+        achievements::register_all(ctx.achievements);
 
         let tex = ctx.assets.create_solid_color(1, 1, [255, 255, 255, 255]).unwrap();
         self.tex_id = tex.id;
@@ -57,7 +60,8 @@ fn main() {
     let config = GameConfig::new("Insiculous Pong")
         .with_size(WIN_W as u32, WIN_H as u32)
         .with_clear_color(0.0, 0.0, 0.0, 1.0)
-        .with_fps(60);
+        .with_fps(60)
+        .with_achievement_save_path("saves/pong_achievements.json");
 
     run_game(PongGame::default(), config).unwrap();
 }

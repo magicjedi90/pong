@@ -1,0 +1,22 @@
+{
+  "unlocks": {
+    "beat_cpu_medium": {
+      "unlocked_at": 1776290230
+    },
+    "beat_cpu_easy": {
+      "unlocked_at": 1776289456
+    },
+    "beat_cpu_hard": {
+      "unlocked_at": 1776290230
+    },
+    "two_player": {
+      "unlocked_at": 1776289500
+    },
+    "win_normal": {
+      "unlocked_at": 1776289456
+    },
+    "win_insane": {
+      "unlocked_at": 1776290230
+    }
+  }
+}

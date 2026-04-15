@@ -23,7 +23,7 @@ impl PongGame {
         self.check_powerup_collisions(ctx);
         self.update_powerup_spawns(ctx);
         self.update_speed_boost(ctx.delta_time);
-        self.check_win_condition(&mut ctx.world);
+        self.check_win_condition(ctx);
     }
 
     fn update_left_paddle(&mut self, ctx: &GameContext, paddle: EntityId) {
@@ -288,7 +288,7 @@ impl PongGame {
         }
     }
 
-    fn check_win_condition(&mut self, world: &mut World) {
+    fn check_win_condition(&mut self, ctx: &mut GameContext) {
         if !matches!(self.state, GameState::Playing | GameState::Serving) { return; }
 
         let winner = if self.score_left >= WIN_SCORE {
@@ -300,9 +300,10 @@ impl PongGame {
         };
 
         if let Some(left_wins) = winner {
-            self.destroy_all_extra_balls(world);
-            self.destroy_all_powerups(world);
+            self.destroy_all_extra_balls(&mut ctx.world);
+            self.destroy_all_powerups(&mut ctx.world);
             self.speed_boost_timer = 0.0;
+            self.unlock_win_achievements(ctx, left_wins);
             self.state = GameState::GameOver { left_wins };
         }
     }
