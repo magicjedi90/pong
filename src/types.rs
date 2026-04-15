@@ -1,4 +1,5 @@
 use engine_core::prelude::*;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum Side { Left, Right }
@@ -39,6 +40,7 @@ impl Difficulty {
 pub(crate) enum GameState {
     TitleScreen { selection: u8 },
     DifficultySelect { selection: u8 },
+    ChaosSelect { selection: u8 },
     Serving,
     Playing,
     GameOver { left_wins: bool },
@@ -61,6 +63,8 @@ pub(crate) struct PongGame {
     pub(crate) extra_balls: Vec<EntityId>,
     pub(crate) left_goal: Option<EntityId>,
     pub(crate) right_goal: Option<EntityId>,
+    pub(crate) background: Option<EntityId>,
+    pub(crate) walls: Vec<EntityId>,
     pub(crate) tex_id: u32,
 
     pub(crate) score_left: u32,
@@ -69,14 +73,18 @@ pub(crate) struct PongGame {
     pub(crate) state: GameState,
     pub(crate) mode: GameMode,
     pub(crate) difficulty: Difficulty,
+    pub(crate) chaos_mode: ChaosMode,
     pub(crate) last_touch: Option<Side>,
     pub(crate) frame_count: u32,
+
+    // Per-ball speed multiplier (used by Insane mode — doubles on each paddle
+    // hit). Absent entries default to 1.0.
+    pub(crate) ball_speed_mult: HashMap<EntityId, f32>,
 
     // Power-ups
     pub(crate) active_powerups: Vec<SpawnedPowerUp>,
     pub(crate) speed_boost_timer: f32,
     pub(crate) powerup_spawn_timer: f32,
-    pub(crate) pending_launches: Vec<(EntityId, Vec2)>,
 }
 
 impl Default for PongGame {
@@ -89,6 +97,8 @@ impl Default for PongGame {
             extra_balls: Vec::new(),
             left_goal: None,
             right_goal: None,
+            background: None,
+            walls: Vec::new(),
             tex_id: 0,
             score_left: 0,
             score_right: 0,
@@ -97,11 +107,12 @@ impl Default for PongGame {
             state: GameState::TitleScreen { selection: 0 },
             mode: GameMode::SinglePlayer,
             difficulty: Difficulty::Medium,
+            chaos_mode: ChaosMode::Normal,
             frame_count: 0,
+            ball_speed_mult: HashMap::new(),
             active_powerups: Vec::new(),
             speed_boost_timer: 0.0,
             powerup_spawn_timer: crate::constants::POWERUP_INITIAL_DELAY,
-            pending_launches: Vec::new(),
         }
     }
 }

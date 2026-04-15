@@ -1,3 +1,4 @@
+mod chaos_theme;
 mod constants;
 mod drawing;
 mod gameplay;
@@ -7,6 +8,7 @@ mod spawning;
 mod types;
 
 use engine_core::prelude::*;
+use chaos_theme::ChaosTheme;
 use constants::*;
 use spawning::*;
 use types::*;
@@ -20,13 +22,16 @@ impl Game for PongGame {
         let tex = ctx.assets.create_solid_color(1, 1, [255, 255, 255, 255]).unwrap();
         self.tex_id = tex.id;
 
+        let theme = ChaosTheme::for_mode(self.chaos_mode);
+        self.background = Some(spawn_background(&mut ctx.world, tex.id, theme.bg_color));
+
         self.left_paddle = Some(spawn_paddle(&mut ctx.world, -PADDLE_X, tex.id, LEFT_COLOR));
         self.right_paddle = Some(spawn_paddle(&mut ctx.world, PADDLE_X, tex.id, RIGHT_COLOR));
         self.ball = Some(self.spawn_ball(&mut ctx.world, tex.id));
 
         let wall_y = WIN_H / 2.0 - 10.0;
-        spawn_wall(&mut ctx.world, Vec2::new(0.0, wall_y), WIN_W, 20.0);
-        spawn_wall(&mut ctx.world, Vec2::new(0.0, -wall_y), WIN_W, 20.0);
+        self.walls.push(spawn_wall(&mut ctx.world, Vec2::new(0.0, wall_y), WIN_W, 20.0, tex.id, theme.wall_color));
+        self.walls.push(spawn_wall(&mut ctx.world, Vec2::new(0.0, -wall_y), WIN_W, 20.0, tex.id, theme.wall_color));
 
         let goal_x = WIN_W / 2.0 + 10.0;
         self.left_goal = Some(spawn_goal_sensor(&mut ctx.world, -goal_x));
@@ -39,6 +44,7 @@ impl Game for PongGame {
         match self.state.clone() {
             GameState::TitleScreen { selection } => self.update_title_input(ctx, selection),
             GameState::DifficultySelect { selection } => self.update_difficulty_input(ctx, selection),
+            GameState::ChaosSelect { selection } => self.update_chaos_input(ctx, selection),
             _ => self.update_gameplay(ctx),
         }
 

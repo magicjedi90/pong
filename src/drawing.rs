@@ -1,4 +1,5 @@
 use engine_core::prelude::*;
+use crate::chaos_theme::ChaosTheme;
 use crate::types::*;
 
 impl PongGame {
@@ -6,6 +7,7 @@ impl PongGame {
         match &self.state {
             GameState::TitleScreen { selection } => self.draw_title(ctx, *selection),
             GameState::DifficultySelect { selection } => self.draw_difficulty(ctx, *selection),
+            GameState::ChaosSelect { selection } => self.draw_chaos(ctx, *selection),
             _ => self.draw_gameplay(ctx),
         }
     }
@@ -39,6 +41,29 @@ impl PongGame {
         ctx.ui.label_centered("SPACE to confirm, ESC to go back", Vec2::new(cx, 380.0));
     }
 
+    fn draw_chaos(&self, ctx: &mut GameContext, selection: u8) {
+        let cx = ctx.window_size.x / 2.0;
+
+        ctx.ui.label_centered("SELECT CHAOS MODE", Vec2::new(cx, 130.0));
+
+        for (i, mode) in ChaosMode::ALL.iter().enumerate() {
+            let prefix = if i as u8 == selection { "> " } else { "  " };
+            ctx.ui.label_centered(
+                &format!("{prefix}{}", mode.label()),
+                Vec2::new(cx, 200.0 + i as f32 * 30.0),
+            );
+        }
+
+        let hint = match ChaosMode::ALL[selection as usize] {
+            ChaosMode::Normal => "Classic Pong.",
+            ChaosMode::Insane => "Ball doubles speed on every paddle hit.",
+            ChaosMode::Ridiculous => "Match starts with two balls.",
+            ChaosMode::Insiculous => "Two balls AND each doubles on paddle hits.",
+        };
+        ctx.ui.label_centered(hint, Vec2::new(cx, 360.0));
+        ctx.ui.label_centered("SPACE to confirm, ESC to go back", Vec2::new(cx, 400.0));
+    }
+
     fn draw_gameplay(&self, ctx: &mut GameContext) {
         let cx = ctx.window_size.x / 2.0;
         let cy = ctx.window_size.y / 2.0;
@@ -48,6 +73,12 @@ impl PongGame {
             GameMode::TwoPlayer => format!("P1 {}  :  {} P2", self.score_left, self.score_right),
         };
         ctx.ui.label_centered(&score_text, Vec2::new(cx, 24.0));
+
+        let theme = ChaosTheme::for_mode(self.chaos_mode);
+        if let Some(banner) = theme.banner_text {
+            let color = Color::new(theme.banner_color.x, theme.banner_color.y, theme.banner_color.z, theme.banner_color.w);
+            ctx.ui.label_centered_styled(banner, Vec2::new(cx, ctx.window_size.y - 24.0), color, 16.0);
+        }
 
         if self.speed_boost_timer > 0.0 {
             ctx.ui.label_centered(

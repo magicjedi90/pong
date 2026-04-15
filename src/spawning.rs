@@ -11,11 +11,25 @@ pub(crate) fn spawn_paddle(world: &mut World, x: f32, tex: u32, color: Vec4) -> 
         .id()
 }
 
-pub(crate) fn spawn_wall(world: &mut World, pos: Vec2, w: f32, h: f32) {
+pub(crate) fn spawn_wall(world: &mut World, pos: Vec2, w: f32, h: f32, tex: u32, color: Vec4) -> EntityId {
+    const RENDER_UNIT: f32 = 80.0;
     world.spawn()
-        .with(Transform2D::new(pos))
+        .with(Transform2D::from_parts(pos, 0.0, Vec2::new(w / RENDER_UNIT, h / RENDER_UNIT)))
+        .with(Sprite::new(tex).with_color(color).with_depth(-1.0))
         .with(RigidBody::new_static())
-        .with(Collider::box_collider(w, h).with_friction(0.0).with_restitution(1.0));
+        .with(Collider::box_collider(w, h).with_friction(0.0).with_restitution(1.0))
+        .id()
+}
+
+pub(crate) fn spawn_background(world: &mut World, tex: u32, color: Vec4) -> EntityId {
+    const RENDER_UNIT: f32 = 80.0;
+    // Slightly oversize so resizes don't reveal a seam.
+    let w = crate::constants::WIN_W * 1.2;
+    let h = crate::constants::WIN_H * 1.2;
+    world.spawn()
+        .with(Transform2D::from_parts(Vec2::ZERO, 0.0, Vec2::new(w / RENDER_UNIT, h / RENDER_UNIT)))
+        .with(Sprite::new(tex).with_color(color).with_depth(-100.0))
+        .id()
 }
 
 pub(crate) fn spawn_goal_sensor(world: &mut World, x: f32) -> EntityId {
