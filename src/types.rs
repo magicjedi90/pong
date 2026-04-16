@@ -41,6 +41,7 @@ pub(crate) enum GameState {
     TitleScreen { selection: u8 },
     DifficultySelect { selection: u8 },
     ChaosSelect { selection: u8 },
+    Achievements,
     Serving,
     Playing,
     GameOver { left_wins: bool },

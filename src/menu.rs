@@ -21,17 +21,27 @@ impl PongGame {
         let confirm = ctx.input.is_key_just_pressed(KeyCode::Space)
             || ctx.input.is_key_just_pressed(KeyCode::Enter);
 
-        let selection = menu_navigate(selection, 2, up, down);
+        let selection = menu_navigate(selection, 3, up, down);
         self.state = GameState::TitleScreen { selection };
 
         if confirm {
             match selection {
                 0 => self.state = GameState::DifficultySelect { selection: 1 },
-                _ => {
+                1 => {
                     self.mode = GameMode::TwoPlayer;
                     self.state = GameState::ChaosSelect { selection: 0 };
                 }
+                _ => self.state = GameState::Achievements,
             }
+        }
+    }
+
+    pub(crate) fn update_achievements_input(&mut self, ctx: &mut GameContext) {
+        if ctx.input.is_key_just_pressed(KeyCode::Escape)
+            || ctx.input.is_key_just_pressed(KeyCode::Space)
+            || ctx.input.is_key_just_pressed(KeyCode::Enter)
+        {
+            self.state = GameState::TitleScreen { selection: 2 };
         }
     }
 

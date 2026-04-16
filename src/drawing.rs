@@ -1,4 +1,5 @@
 use engine_core::prelude::*;
+use crate::achievements::DISPLAY_SECTIONS;
 use crate::chaos_theme::ChaosTheme;
 use crate::types::*;
 
@@ -8,6 +9,7 @@ impl PongGame {
             GameState::TitleScreen { selection } => self.draw_title(ctx, *selection),
             GameState::DifficultySelect { selection } => self.draw_difficulty(ctx, *selection),
             GameState::ChaosSelect { selection } => self.draw_chaos(ctx, *selection),
+            GameState::Achievements => self.draw_achievements(ctx),
             _ => self.draw_gameplay(ctx),
         }
     }
@@ -17,14 +19,70 @@ impl PongGame {
 
         ctx.ui.label_centered("INSICULOUS PONG", Vec2::new(cx, 150.0));
 
-        let items = ["Single Player", "Two Player"];
+        let items = ["Single Player", "Two Player", "Achievements"];
         for (i, item) in items.iter().enumerate() {
             let prefix = if i as u8 == selection { "> " } else { "  " };
             ctx.ui.label_centered(&format!("{prefix}{item}"), Vec2::new(cx, 240.0 + i as f32 * 30.0));
         }
 
-        ctx.ui.label_centered("W/S or Arrows to navigate", Vec2::new(cx, 380.0));
-        ctx.ui.label_centered("SPACE to confirm", Vec2::new(cx, 404.0));
+        ctx.ui.label_centered("W/S or Arrows to navigate", Vec2::new(cx, 400.0));
+        ctx.ui.label_centered("SPACE to confirm", Vec2::new(cx, 424.0));
+    }
+
+    fn draw_achievements(&self, ctx: &mut GameContext) {
+        let cx = ctx.window_size.x / 2.0;
+        let total = ctx.achievements.total();
+        let unlocked = ctx.achievements.unlocked_count();
+
+        ctx.ui.label_centered("ACHIEVEMENTS", Vec2::new(cx, 30.0));
+        ctx.ui.label_centered(
+            &format!("{unlocked} / {total} unlocked"),
+            Vec2::new(cx, 54.0),
+        );
+
+        // Left-align the list. Pixel-perfect centering of variable-length rows
+        // isn't worth the complexity — a fixed left margin reads fine.
+        let left = 40.0;
+        let mut y = 90.0;
+
+        let locked_color = Color::new(0.45, 0.45, 0.5, 1.0);
+        let unlocked_color = Color::new(1.0, 0.85, 0.25, 1.0);
+        let desc_color = Color::new(0.75, 0.75, 0.8, 1.0);
+        let header_color = Color::new(0.6, 0.75, 1.0, 1.0);
+
+        for (section, ids) in DISPLAY_SECTIONS {
+            ctx.ui.label_styled(section, Vec2::new(left, y), header_color, 16.0);
+            y += 22.0;
+            for id in *ids {
+                let is_unlocked = ctx.achievements.is_unlocked(id);
+                // Registry always has entries for these ids (registered in init).
+                let Some(ach) = ctx.achievements.get(id) else { continue };
+
+                let (marker, name_color) = if is_unlocked {
+                    ("[X]", unlocked_color)
+                } else {
+                    ("[ ]", locked_color)
+                };
+
+                let (name, desc) = if !is_unlocked && ach.hidden {
+                    ("???".to_string(), "Hidden — unlock to reveal".to_string())
+                } else {
+                    (ach.name.clone(), ach.description.clone())
+                };
+
+                ctx.ui.label_styled(
+                    &format!("{marker} {name}"),
+                    Vec2::new(left + 8.0, y),
+                    name_color,
+                    14.0,
+                );
+                ctx.ui.label_styled(&desc, Vec2::new(left + 52.0, y + 16.0), desc_color, 12.0);
+                y += 36.0;
+            }
+            y += 6.0;
+        }
+
+        ctx.ui.label_centered("ESC or SPACE to go back", Vec2::new(cx, ctx.window_size.y - 20.0));
     }
 
     fn draw_difficulty(&self, ctx: &mut GameContext, selection: u8) {

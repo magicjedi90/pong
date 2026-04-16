@@ -48,6 +48,7 @@ impl Game for PongGame {
             GameState::TitleScreen { selection } => self.update_title_input(ctx, selection),
             GameState::DifficultySelect { selection } => self.update_difficulty_input(ctx, selection),
             GameState::ChaosSelect { selection } => self.update_chaos_input(ctx, selection),
+            GameState::Achievements => self.update_achievements_input(ctx),
             _ => self.update_gameplay(ctx),
         }
 

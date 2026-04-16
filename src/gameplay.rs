@@ -322,6 +322,7 @@ impl PongGame {
             GameState::TitleScreen { .. }
                 | GameState::DifficultySelect { .. }
                 | GameState::ChaosSelect { .. }
+                | GameState::Achievements
         );
         let entities = [self.ball, self.left_paddle, self.right_paddle].into_iter().flatten()
             .chain(self.extra_balls.iter().copied())

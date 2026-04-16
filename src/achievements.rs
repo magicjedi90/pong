@@ -25,6 +25,19 @@ pub(crate) const SHUTOUT_INSANE:     &str = "shutout_insane";
 pub(crate) const SHUTOUT_RIDICULOUS: &str = "shutout_ridiculous";
 pub(crate) const SHUTOUT_INSICULOUS: &str = "shutout_insiculous";
 
+/// Grouped display order for the achievements page. First tuple element is
+/// the section header, second is the list of ids to render under it.
+pub(crate) const DISPLAY_SECTIONS: &[(&str, &[&str])] = &[
+    ("CPU Difficulty",
+        &[BEAT_CPU_EASY, BEAT_CPU_MEDIUM, BEAT_CPU_HARD]),
+    ("Chaos Mode Wins",
+        &[WIN_NORMAL, WIN_INSANE, WIN_RIDICULOUS, WIN_INSICULOUS]),
+    ("Shutouts",
+        &[SHUTOUT_NORMAL, SHUTOUT_INSANE, SHUTOUT_RIDICULOUS, SHUTOUT_INSICULOUS]),
+    ("Multiplayer",
+        &[TWO_PLAYER]),
+];
+
 /// Register every Pong achievement. Call once from `Game::init`.
 pub(crate) fn register_all(mgr: &mut AchievementManager) {
     // Difficulty (CPU wins). Beating a higher difficulty cascades to unlock
@@ -153,6 +166,26 @@ mod tests {
         assert_eq!(chaos_shutout_id(ChaosMode::Insane),     SHUTOUT_INSANE);
         assert_eq!(chaos_shutout_id(ChaosMode::Ridiculous), SHUTOUT_RIDICULOUS);
         assert_eq!(chaos_shutout_id(ChaosMode::Insiculous), SHUTOUT_INSICULOUS);
+    }
+
+    #[test]
+    fn display_sections_cover_every_registered_achievement() {
+        let mut mgr = AchievementManager::in_memory();
+        register_all(&mut mgr);
+
+        let shown: std::collections::HashSet<&str> = DISPLAY_SECTIONS
+            .iter()
+            .flat_map(|(_, ids)| ids.iter().copied())
+            .collect();
+
+        for ach in mgr.all() {
+            assert!(
+                shown.contains(ach.id.as_str()),
+                "{} registered but not in DISPLAY_SECTIONS",
+                ach.id
+            );
+        }
+        assert_eq!(shown.len(), mgr.total(), "DISPLAY_SECTIONS has duplicates or extras");
     }
 
     #[test]
