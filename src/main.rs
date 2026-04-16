@@ -4,7 +4,7 @@ mod constants;
 mod drawing;
 mod gameplay;
 mod menu;
-mod powerups;
+mod power_ups;
 mod spawning;
 mod types;
 
