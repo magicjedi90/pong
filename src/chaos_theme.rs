@@ -12,6 +12,10 @@ pub(crate) struct ChaosTheme {
     pub ball_color: Vec4,
     pub banner_text: Option<&'static str>,
     pub banner_color: Vec4,
+    /// Color of the deforming grid background.
+    pub grid_color: Vec4,
+    /// Multiplier on particle counts — higher chaos modes spawn denser bursts.
+    pub particle_count_mult: f32,
 }
 
 impl ChaosTheme {
@@ -23,6 +27,8 @@ impl ChaosTheme {
                 ball_color: Vec4::ONE,
                 banner_text: None,
                 banner_color: Vec4::ONE,
+                grid_color: Vec4::new(0.15, 0.3, 0.7, 0.5),
+                particle_count_mult: 1.0,
             },
             ChaosMode::Insane => Self {
                 bg_color: Vec4::new(0.18, 0.02, 0.02, 1.0),
@@ -30,6 +36,8 @@ impl ChaosTheme {
                 ball_color: Vec4::new(1.0, 0.82, 0.6, 1.0),
                 banner_text: Some("!! INSANE !!"),
                 banner_color: Vec4::new(1.0, 0.5, 0.3, 1.0),
+                grid_color: Vec4::new(0.9, 0.2, 0.1, 0.55),
+                particle_count_mult: 1.6,
             },
             ChaosMode::Ridiculous => Self {
                 bg_color: Vec4::new(0.08, 0.02, 0.15, 1.0),
@@ -37,6 +45,8 @@ impl ChaosTheme {
                 ball_color: Vec4::new(1.0, 0.75, 1.0, 1.0),
                 banner_text: Some("~~ RIDICULOUS ~~"),
                 banner_color: Vec4::new(0.95, 0.4, 1.0, 1.0),
+                grid_color: Vec4::new(0.8, 0.2, 1.0, 0.55),
+                particle_count_mult: 1.8,
             },
             ChaosMode::Insiculous => Self {
                 bg_color: Vec4::new(0.04, 0.08, 0.04, 1.0),
@@ -44,6 +54,8 @@ impl ChaosTheme {
                 ball_color: Vec4::new(0.85, 1.0, 0.55, 1.0),
                 banner_text: Some(">>> INSICULOUS <<<"),
                 banner_color: Vec4::new(0.7, 1.0, 0.4, 1.0),
+                grid_color: Vec4::new(0.4, 1.0, 0.3, 0.6),
+                particle_count_mult: 2.4,
             },
         }
     }

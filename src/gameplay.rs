@@ -1,7 +1,12 @@
 use engine_core::prelude::*;
 use crate::chaos_theme::ChaosTheme;
 use crate::constants::*;
+use crate::effects;
 use crate::types::*;
+
+fn entity_position(world: &World, entity: EntityId) -> Option<Vec2> {
+    world.get::<Transform2D>(entity).map(|t| t.position)
+}
 
 fn entity_y(world: &World, entity: EntityId) -> f32 {
     world.get::<Transform2D>(entity).map(|t| t.position.y).unwrap_or(0.0)
@@ -24,6 +29,19 @@ impl PongGame {
         self.update_powerup_spawns(ctx);
         self.update_speed_boost(ctx.delta_time);
         self.check_win_condition(ctx);
+
+        // Step + render the deforming grid after gameplay so it reacts to
+        // this frame's collisions.
+        self.step_and_emit_grid(ctx);
+    }
+
+    /// Advance the spring-mass grid and push its line vertices into the
+    /// engine's per-frame line buffer.
+    fn step_and_emit_grid(&mut self, ctx: &mut GameContext) {
+        let Some(grid) = self.grid.as_mut() else { return };
+        grid.step(ctx.delta_time);
+        let verts = grid.build_line_vertices();
+        ctx.lines.extend_from_slice(verts);
     }
 
     fn update_left_paddle(&mut self, ctx: &GameContext, paddle: EntityId) {
@@ -243,8 +261,70 @@ impl PongGame {
             }
         }
 
+        // Spawn paddle-hit visuals: a directional particle burst plus a grid
+        // ripple. We do this in a second pass over the collision events so we
+        // can mutably borrow ctx.particles / self.grid (which would conflict
+        // with the immutable iteration over physics.collision_events() above).
+        let theme = ChaosTheme::for_mode(self.chaos_mode);
+        let tex = self.tex_id;
+        let mut hit_events: Vec<(Vec2, Vec4, Vec2)> = Vec::new();
+        for collision in self.physics.collision_events() {
+            if !collision.event.started { continue; }
+            for &b in &all_balls {
+                let (paddle_color, paddle_x) = if collision.event.involves(b, left_paddle) {
+                    (LEFT_COLOR, -PADDLE_X)
+                } else if collision.event.involves(b, right_paddle) {
+                    (RIGHT_COLOR, PADDLE_X)
+                } else {
+                    continue;
+                };
+                let Some(ball_pos) = entity_position(&ctx.world, b) else { continue };
+                // Normal points from the paddle toward the ball — i.e. the
+                // direction the ball is bouncing in. That's the cone direction
+                // for the spray.
+                let normal = (ball_pos - Vec2::new(paddle_x, ball_pos.y)).normalize_or_zero();
+                hit_events.push((ball_pos, paddle_color, normal));
+            }
+        }
+        for (pos, color, normal) in hit_events {
+            let burst = effects::paddle_hit_burst(color, normal, &theme, tex);
+            ctx.particles.spawn_burst(pos, &burst);
+            if let Some(grid) = self.grid.as_mut() {
+                grid.apply_impulse(&GridImpulse::Radial {
+                    position: pos,
+                    strength: 240.0,
+                    radius: 80.0,
+                    attractive: false,
+                });
+            }
+        }
+
         // Process scored balls
         for (ball_id, side) in &balls_scored {
+            // Capture the ball's last position before we destroy it so the
+            // explosion burst spawns at the right place.
+            let explosion_pos = entity_position(&ctx.world, *ball_id)
+                .unwrap_or_else(|| match side {
+                    // Fallback: goal location, in case the entity was already gone.
+                    Side::Right => Vec2::new(-PADDLE_X, 0.0),
+                    Side::Left => Vec2::new(PADDLE_X, 0.0),
+                });
+            // Explosion takes the *scorer's* color — visual reward for the player.
+            let explosion_color = match side {
+                Side::Left => LEFT_COLOR,
+                Side::Right => RIGHT_COLOR,
+            };
+            let explosion = effects::goal_explosion(explosion_color, &theme, tex);
+            ctx.particles.spawn_burst(explosion_pos, &explosion);
+            if let Some(grid) = self.grid.as_mut() {
+                grid.apply_impulse(&GridImpulse::Radial {
+                    position: explosion_pos,
+                    strength: 800.0,
+                    radius: 180.0,
+                    attractive: false,
+                });
+            }
+
             match side {
                 Side::Left => self.score_left += 1,
                 Side::Right => self.score_right += 1,

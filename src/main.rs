@@ -2,6 +2,7 @@ mod achievements;
 mod chaos_theme;
 mod constants;
 mod drawing;
+mod effects;
 mod gameplay;
 mod menu;
 mod power_ups;
@@ -39,6 +40,9 @@ impl Game for PongGame {
         let goal_x = WIN_W / 2.0 + 10.0;
         self.left_goal = Some(spawn_goal_sensor(&mut ctx.world, -goal_x));
         self.right_goal = Some(spawn_goal_sensor(&mut ctx.world, goal_x));
+
+        // Build the deforming grid background.
+        self.grid = Some(effects::build_grid(&theme));
     }
 
     fn update(&mut self, ctx: &mut GameContext) {

@@ -86,6 +86,11 @@ pub(crate) struct PongGame {
     pub(crate) active_powerups: Vec<SpawnedPowerUp>,
     pub(crate) speed_boost_timer: f32,
     pub(crate) powerup_spawn_timer: f32,
+
+    /// Deforming spring-mass grid drawn under the gameplay sprites.
+    /// Built in `init()` after we know the chaos mode (the grid color is
+    /// theme-specific).
+    pub(crate) grid: Option<GridMesh>,
 }
 
 impl Default for PongGame {
@@ -114,6 +119,7 @@ impl Default for PongGame {
             active_powerups: Vec::new(),
             speed_boost_timer: 0.0,
             powerup_spawn_timer: crate::constants::POWERUP_INITIAL_DELAY,
+            grid: None,
         }
     }
 }
