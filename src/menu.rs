@@ -87,6 +87,9 @@ impl PongGame {
             self.state = GameState::TitleScreen { selection: 0 };
         } else if confirm {
             self.chaos_mode = ChaosMode::ALL[selection as usize];
+            // Mirror the runtime selection into the engine context so any
+            // code reading ctx.chaos_mode agrees with self.chaos_mode.
+            ctx.chaos_mode = self.chaos_mode;
             self.start_game(&mut ctx.world);
         }
     }

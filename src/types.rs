@@ -66,7 +66,13 @@ pub(crate) struct PongGame {
     pub(crate) right_goal: Option<EntityId>,
     pub(crate) background: Option<EntityId>,
     pub(crate) walls: Vec<EntityId>,
+    /// White 1x1 texture for walls, background, and particles.
     pub(crate) tex_id: u32,
+    /// PNG texture for the rounded-capsule paddle sprite. Right paddle
+    /// mirrors this horizontally via a negative `Sprite.scale.x`.
+    pub(crate) paddle_tex_id: u32,
+    /// PNG texture for the circular ball sprite.
+    pub(crate) ball_tex_id: u32,
 
     pub(crate) score_left: u32,
     pub(crate) score_right: u32,
@@ -91,6 +97,10 @@ pub(crate) struct PongGame {
     /// Built in `init()` after we know the chaos mode (the grid color is
     /// theme-specific).
     pub(crate) grid: Option<GridMesh>,
+    /// When true, every collider in the world is outlined in bright magenta
+    /// lines. Toggle with F1. Useful for confirming collider geometry lines
+    /// up with sprite art.
+    pub(crate) debug_colliders: bool,
 }
 
 impl Default for PongGame {
@@ -106,6 +116,8 @@ impl Default for PongGame {
             background: None,
             walls: Vec::new(),
             tex_id: 0,
+            paddle_tex_id: 0,
+            ball_tex_id: 0,
             score_left: 0,
             score_right: 0,
             last_scorer: Side::Right,
@@ -120,6 +132,7 @@ impl Default for PongGame {
             speed_boost_timer: 0.0,
             powerup_spawn_timer: crate::constants::POWERUP_INITIAL_DELAY,
             grid: None,
+            debug_colliders: false,
         }
     }
 }

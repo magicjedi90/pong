@@ -15,9 +15,26 @@ use constants::*;
 use spawning::*;
 use types::*;
 
+/// Directory that holds the game's `assets/` and `saves/` folders.
+///
+/// Prefers the executable's directory (shipped layout: assets next to the
+/// binary), falling back to the crate directory so `cargo run` works from
+/// any current working directory.
+fn game_root() -> std::path::PathBuf {
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            if dir.join("assets").is_dir() {
+                return dir.to_path_buf();
+            }
+        }
+    }
+    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+}
+
 impl Game for PongGame {
     fn init(&mut self, ctx: &mut GameContext) {
-        if let Ok(font) = ctx.ui.load_font_file("assets/fonts/font.ttf") {
+        let font_path = game_root().join("assets/fonts/font.ttf");
+        if let Ok(font) = ctx.ui.load_font_file(&font_path.to_string_lossy()) {
             ctx.ui.set_default_font(font);
         }
 
@@ -25,13 +42,20 @@ impl Game for PongGame {
 
         let tex = ctx.assets.create_solid_color(1, 1, [255, 255, 255, 255]).unwrap();
         self.tex_id = tex.id;
+        // Relative paths resolve against the asset base path set in main().
+        self.paddle_tex_id = ctx.assets.load_texture("paddle_16px.png")
+            .expect("missing assets/paddle_16px.png").id;
+        self.ball_tex_id = ctx.assets.load_texture("ball_8px.png")
+            .expect("missing assets/ball_8px.png").id;
 
         let theme = ChaosTheme::for_mode(self.chaos_mode);
         self.background = Some(spawn_background(&mut ctx.world, tex.id, theme.bg_color));
 
-        self.left_paddle = Some(spawn_paddle(&mut ctx.world, -PADDLE_X, tex.id, LEFT_COLOR));
-        self.right_paddle = Some(spawn_paddle(&mut ctx.world, PADDLE_X, tex.id, RIGHT_COLOR));
-        self.ball = Some(self.spawn_ball(&mut ctx.world, tex.id));
+        // Left paddle: rounded face naturally on the right (toward the ball).
+        // Right paddle: mirror so its rounded face points left (toward the ball).
+        self.left_paddle = Some(spawn_paddle(&mut ctx.world, -PADDLE_X, self.paddle_tex_id, LEFT_COLOR, false));
+        self.right_paddle = Some(spawn_paddle(&mut ctx.world, PADDLE_X, self.paddle_tex_id, RIGHT_COLOR, true));
+        self.ball = Some(self.spawn_ball(&mut ctx.world));
 
         let wall_y = WIN_H / 2.0 - 10.0;
         self.walls.push(spawn_wall(&mut ctx.world, Vec2::new(0.0, wall_y), WIN_W, 20.0, tex.id, theme.wall_color));
@@ -62,11 +86,15 @@ impl Game for PongGame {
 }
 
 fn main() {
+    // Anchor assets and saves to the game's directory so launching from any
+    // working directory behaves the same.
+    let root = game_root();
     let config = GameConfig::new("Insiculous Pong")
         .with_size(WIN_W as u32, WIN_H as u32)
         .with_clear_color(0.0, 0.0, 0.0, 1.0)
         .with_fps(60)
-        .with_achievement_save_path("saves/pong_achievements.json");
+        .with_asset_base_path(root.join("assets").to_string_lossy())
+        .with_achievement_save_path(root.join("saves/pong_achievements.json").to_string_lossy());
 
     run_game(PongGame::default(), config).unwrap();
 }

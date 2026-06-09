@@ -18,14 +18,25 @@ impl PongGame {
         let left_paddle = match self.left_paddle { Some(e) => e, None => return };
         let right_paddle = match self.right_paddle { Some(e) => e, None => return };
 
+        // F1 toggles the collider debug overlay. Magenta outlines render on
+        // top of sprites so any sprite-vs-collider mismatch is obvious.
+        if ctx.input.is_key_just_pressed(KeyCode::F1) {
+            self.debug_colliders = !self.debug_colliders;
+        }
+
         self.update_left_paddle(ctx, left_paddle);
         self.update_right_paddle(ctx, right_paddle, ball);
         self.physics.update(&mut ctx.world, ctx.delta_time);
 
+        // Snapshot this frame's collision events once. Every consumer below
+        // works from this slice instead of re-reading collision_events(), so
+        // gameplay never depends on how long physics retains its buffer.
+        let collisions: Vec<CollisionData> = self.physics.collision_events().to_vec();
+
         self.handle_gameplay_input(ctx, ball);
         self.maintain_all_ball_velocities();
-        self.check_goals(ctx);
-        self.check_powerup_collisions(ctx);
+        self.check_goals(ctx, &collisions);
+        self.check_powerup_collisions(ctx, &collisions);
         self.update_powerup_spawns(ctx);
         self.update_speed_boost(ctx.delta_time);
         self.check_win_condition(ctx);
@@ -36,12 +47,19 @@ impl PongGame {
     }
 
     /// Advance the spring-mass grid and push its line vertices into the
-    /// engine's per-frame line buffer.
+    /// engine's per-frame line buffer. When the collider-debug overlay is
+    /// enabled, the collider outlines are pushed on top.
     fn step_and_emit_grid(&mut self, ctx: &mut GameContext) {
-        let Some(grid) = self.grid.as_mut() else { return };
-        grid.step(ctx.delta_time);
-        let verts = grid.build_line_vertices();
-        ctx.lines.extend_from_slice(verts);
+        if let Some(grid) = self.grid.as_mut() {
+            grid.step(ctx.delta_time);
+            let verts = grid.build_line_vertices();
+            ctx.lines.extend_from_slice(verts);
+        }
+        if self.debug_colliders {
+            // Bright magenta with high emissive so the outline blooms and
+            // sits visibly above every sprite.
+            debug::draw_colliders(&ctx.world, ctx.lines, Vec4::new(1.0, 0.2, 1.0, 0.9), 2.0);
+        }
     }
 
     fn update_left_paddle(&mut self, ctx: &GameContext, paddle: EntityId) {
@@ -111,7 +129,7 @@ impl PongGame {
                     // Ridiculous: spawn a second ball headed the opposite way
                     // so each player gets one incoming.
                     if self.chaos_mode.is_ridiculous() {
-                        let extra = self.spawn_ball(&mut ctx.world, self.tex_id);
+                        let extra = self.spawn_ball(&mut ctx.world);
                         let theme = ChaosTheme::for_mode(self.chaos_mode);
                         if let Some(s) = ctx.world.get_mut::<Sprite>(extra) {
                             s.color = theme.ball_color;
@@ -165,7 +183,7 @@ impl PongGame {
         }
     }
 
-    fn check_goals(&mut self, ctx: &mut GameContext) {
+    fn check_goals(&mut self, ctx: &mut GameContext, collisions: &[CollisionData]) {
         let left_goal = match self.left_goal { Some(e) => e, None => return };
         let right_goal = match self.right_goal { Some(e) => e, None => return };
         let left_paddle = match self.left_paddle { Some(e) => e, None => return };
@@ -220,7 +238,7 @@ impl PongGame {
         let mut balls_scored: Vec<(EntityId, Side)> = Vec::new();
         let insane = self.chaos_mode.is_insane();
         let mut paddle_hits: Vec<EntityId> = Vec::new();
-        for collision in self.physics.collision_events() {
+        for collision in collisions {
             if !collision.event.started { continue; }
             for &b in &all_balls {
                 let mut hit_paddle = false;
@@ -262,13 +280,12 @@ impl PongGame {
         }
 
         // Spawn paddle-hit visuals: a directional particle burst plus a grid
-        // ripple. We do this in a second pass over the collision events so we
-        // can mutably borrow ctx.particles / self.grid (which would conflict
-        // with the immutable iteration over physics.collision_events() above).
+        // ripple. Second pass over the snapshot so the speed-boost pass above
+        // finishes adjusting velocities before positions are read.
         let theme = ChaosTheme::for_mode(self.chaos_mode);
         let tex = self.tex_id;
         let mut hit_events: Vec<(Vec2, Vec4, Vec2)> = Vec::new();
-        for collision in self.physics.collision_events() {
+        for collision in collisions {
             if !collision.event.started { continue; }
             for &b in &all_balls {
                 let (paddle_color, paddle_x) = if collision.event.involves(b, left_paddle) {
@@ -357,7 +374,7 @@ impl PongGame {
             self.last_touch = None;
             self.ball_speed_mult.clear();
             // Spawn a fresh primary ball
-            let fresh = self.spawn_ball(&mut ctx.world, self.tex_id);
+            let fresh = self.spawn_ball(&mut ctx.world);
             self.ball = Some(fresh);
             self.physics.reset_body(fresh, Vec2::ZERO);
             let theme = ChaosTheme::for_mode(self.chaos_mode);

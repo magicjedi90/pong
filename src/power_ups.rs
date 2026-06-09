@@ -56,16 +56,20 @@ impl PongGame {
         self.powerup_spawn_timer = POWERUP_SPAWN_MIN + t * (POWERUP_SPAWN_MAX - POWERUP_SPAWN_MIN);
     }
 
-    pub(crate) fn check_powerup_collisions(&mut self, ctx: &mut GameContext) {
+    pub(crate) fn check_powerup_collisions(
+        &mut self,
+        ctx: &mut GameContext,
+        collisions: &[CollisionData],
+    ) {
         let all_balls: Vec<EntityId> = self.ball.into_iter()
             .chain(self.extra_balls.iter().copied())
             .collect();
 
         // Collect what was hit (index, kind, which ball triggered it)
         let mut hits: Vec<(usize, PowerUpKind, EntityId)> = Vec::new();
-        for (i, powerup) in self.active_powerups.iter().enumerate() {
-            for collision in self.physics.collision_events() {
-                if !collision.event.started { continue; }
+        for collision in collisions {
+            if !collision.event.started { continue; }
+            for (i, powerup) in self.active_powerups.iter().enumerate() {
                 for &b in &all_balls {
                     if collision.event.involves(b, powerup.entity) {
                         hits.push((i, powerup.kind, b));
@@ -74,8 +78,11 @@ impl PongGame {
             }
         }
 
-        // Apply effects and remove consumed power-ups
+        // Apply effects and remove consumed power-ups. Sort before dedup —
+        // hits are ordered by collision event, so equal indices may not be
+        // adjacent, and the reverse removal below needs ascending order.
         let mut consumed_indices: Vec<usize> = hits.iter().map(|(i, _, _)| *i).collect();
+        consumed_indices.sort_unstable();
         consumed_indices.dedup();
 
         for &(_, kind, ball_id) in &hits {
@@ -105,7 +112,7 @@ impl PongGame {
             .unwrap_or(BALL_INITIAL_SPEED);
 
         // Spawn new ball at source position
-        let entity = self.spawn_ball(&mut ctx.world, self.tex_id);
+        let entity = self.spawn_ball(&mut ctx.world);
         if let Some(transform) = ctx.world.get_mut::<Transform2D>(entity) {
             transform.position = pos;
         }

@@ -2,14 +2,38 @@ use engine_core::prelude::*;
 use crate::constants::*;
 use crate::types::PongGame;
 
-pub(crate) fn spawn_paddle(world: &mut World, x: f32, tex: u32, color: Vec4) -> EntityId {
+/// Spawn one paddle. The source `paddle_16px.png` has its flat face on the
+/// left and rounded face on the right; pass `mirror = true` for the right
+/// paddle so its rounded face points back at the opponent.
+///
+/// Physics uses a capsule collider — the flat center returns balls
+/// predictably, while the rounded top/bottom caps produce dramatic angles
+/// on edge hits.
+pub(crate) fn spawn_paddle(
+    world: &mut World,
+    x: f32,
+    paddle_tex: u32,
+    color: Vec4,
+    mirror: bool,
+) -> EntityId {
+    // The Sprite's scale is multiplied by Transform2D scale at render time;
+    // flipping its X sign mirrors the rendered texture without affecting the
+    // collider (which uses absolute PADDLE_W/H).
+    let sprite_scale = Vec2::new(if mirror { -1.0 } else { 1.0 }, 1.0);
     world.spawn()
         .with(Transform2D::from_parts(Vec2::new(x, 0.0), 0.0, PADDLE_SCALE))
         // Paddles glow strongly so bloom traces a halo around them — the
         // signature Geometry-Wars treatment for player-controlled objects.
-        .with(Sprite::new(tex).with_color(color).with_emissive(1.5))
+        .with(Sprite::new(paddle_tex)
+            .with_color(color)
+            .with_emissive(1.5)
+            .with_scale(sprite_scale))
         .with(RigidBody::new_kinematic().with_rotation_locked(true))
-        .with(Collider::box_collider(PADDLE_W, PADDLE_H).with_friction(0.0).with_restitution(1.0))
+        // Capsule: total height = PADDLE_H, cap radius = PADDLE_W/2. Flat
+        // body is the cylindrical middle, rounded caps live at top and bottom.
+        .with(Collider::new(ColliderShape::capsule_y(PADDLE_H, PADDLE_W * 0.5))
+            .with_friction(0.0)
+            .with_restitution(1.0))
         .id()
 }
 
@@ -46,12 +70,15 @@ pub(crate) fn spawn_goal_sensor(world: &mut World, x: f32) -> EntityId {
 }
 
 impl PongGame {
-    pub(crate) fn spawn_ball(&self, world: &mut World, tex: u32) -> EntityId {
+    /// Spawn a ball entity using the loaded ball PNG texture. The collider
+    /// stays a true circle so reflection physics off the paddle's capsule
+    /// caps matches what the player sees on screen.
+    pub(crate) fn spawn_ball(&self, world: &mut World) -> EntityId {
         world.spawn()
             .with(Transform2D::from_parts(Vec2::ZERO, 0.0, Vec2::splat(BALL_SCALE)))
             // Ball is the brightest object on screen — high emissive value
             // gives it a strong neon core that smears with motion via bloom.
-            .with(Sprite::new(tex).with_emissive(2.5))
+            .with(Sprite::new(self.ball_tex_id).with_emissive(2.5))
             .with(RigidBody::new_dynamic()
                 .with_gravity_scale(0.0)
                 .with_rotation_locked(true)
