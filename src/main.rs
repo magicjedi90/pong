@@ -96,5 +96,11 @@ fn main() {
         .with_asset_base_path(root.join("assets").to_string_lossy())
         .with_achievement_save_path(root.join("saves/pong_achievements.json").to_string_lossy());
 
+    // With `--features editor` the game runs inside the scene editor
+    // (hierarchy, inspector, gizmos, play/pause/stop, collider overlay);
+    // without it the game runs bare. Same game code either way.
+    #[cfg(feature = "editor")]
+    editor_integration::run_game_with_editor(PongGame::default(), config).unwrap();
+    #[cfg(not(feature = "editor"))]
     run_game(PongGame::default(), config).unwrap();
 }

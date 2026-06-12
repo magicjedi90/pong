@@ -1,27 +1,33 @@
 {
   "unlocks": {
-    "beat_cpu_easy": {
-      "unlocked_at": 1776289456
-    },
-    "win_normal": {
-      "unlocked_at": 1776289456
-    },
     "two_player": {
       "unlocked_at": 1776289500
-    },
-    "win_insiculous": {
-      "unlocked_at": 1778776048
-    },
-    "beat_cpu_medium": {
-      "unlocked_at": 1776290230
-    },
-    "win_ridiculous": {
-      "unlocked_at": 1778776360
     },
     "win_insane": {
       "unlocked_at": 1776290230
     },
     "beat_cpu_hard": {
+      "unlocked_at": 1776290230
+    },
+    "win_insiculous": {
+      "unlocked_at": 1778776048
+    },
+    "win_normal": {
+      "unlocked_at": 1776289456
+    },
+    "beat_cpu_easy": {
+      "unlocked_at": 1776289456
+    },
+    "shutout_ridiculous": {
+      "unlocked_at": 1781122232
+    },
+    "win_ridiculous": {
+      "unlocked_at": 1778776360
+    },
+    "shutout_normal": {
+      "unlocked_at": 1781115501
+    },
+    "beat_cpu_medium": {
       "unlocked_at": 1776290230
     }
   }
