@@ -1,0 +1,36 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Commands
+
+```bash
+cargo run                     # play the game
+cargo run --features editor   # run the game inside the engine's scene editor
+cargo build                   # compile check
+cargo test                    # run tests (currently only in src/achievements.rs)
+cargo test <test_name>        # run a single test
+```
+
+The game depends on the `insiculous_2d` engine by relative path (`../../insiculous_2d`); both checkouts must sit side by side or nothing builds. Engine crates used: `engine_core` (always) and `editor_integration` (only behind the `editor` feature).
+
+## Architecture
+
+This is a single-crate game (`insiculous_pong`) built on the in-house `insiculous_2d` ECS engine. `PongGame` (in `src/types.rs`) implements the engine's `Game` trait in `src/main.rs` — `init()` spawns all entities, `update()` runs once per frame. With `--features editor` the identical game runs inside the engine's scene editor via `editor_integration::run_game_with_editor`; no game code changes between the two modes.
+
+**State machine drives everything.** `GameState` (types.rs) is matched at the top of `update()` in main.rs: the menu states (`TitleScreen`, `DifficultySelect`, `ChaosSelect`, `Achievements`) dispatch to handlers in `menu.rs`; everything else (`Serving`, `Playing`, `GameOver`) falls through to `update_gameplay()` in `gameplay.rs`. Match flow is Title → Difficulty (single-player only) → Chaos select → Serving ↔ Playing → GameOver.
+
+**The game steps physics itself.** `PongGame` owns a `PhysicsSystem` and calls `self.physics.update(&mut ctx.world, ctx.delta_time)` inside `update_gameplay()`. Collision events are snapshotted into a `Vec` once per frame and all consumers (goals, power-ups) read that slice — never re-read `collision_events()` mid-frame. Paddles are kinematic bodies moved via `set_kinematic_target`; balls are dynamic with CCD, zero damping, and restitution 1.0; goals are static sensor colliders just off-screen.
+
+**Coordinate and scale conventions (the main trap):**
+- World origin is screen center; window is 800×600 (`WIN_W`/`WIN_H`).
+- The renderer multiplies `Transform2D.scale` by `RENDER_UNIT = 80.0` to get pixel size — that's why sprite scales are `size / 80.0`.
+- Collider shapes use **absolute pixels** and ignore `Transform2D.scale` entirely. Sprites and colliders are sized through different paths, so they can silently diverge. `F1` in-game (or `C` in the editor) overlays collider outlines to check.
+
+**All tuning lives in `src/constants.rs`** (sizes, speeds, colors, power-up timing) and entities are only ever spawned from those constants in `src/spawning.rs` / `power_ups.rs`. Values tuned live in the editor inspector must be copied back into constants.rs to persist.
+
+**Chaos modes** (Normal / Insane / Ridiculous / Insiculous) are an engine-provided `ChaosMode` enum. Insane doubles a per-ball speed multiplier (`ball_speed_mult: HashMap<EntityId, f32>`) on each paddle hit; Ridiculous starts with a second ball in `extra_balls`; Insiculous is both. `chaos_theme.rs` maps each mode to a color theme applied at spawn time, so the theme is only fully applied on a fresh `init()`/match.
+
+**Visuals:** the Geometry-Wars look comes from `Sprite::with_emissive` values feeding the engine's bloom (ball 2.5, paddles 1.5, walls 0.6) plus a spring-mass deforming grid (`effects.rs`) whose line vertices are pushed into `ctx.lines` every frame after gameplay, so it reacts to that frame's collisions.
+
+**Paths:** assets and saves resolve through `game_root()` in main.rs (exe directory if it contains `assets/`, else `CARGO_MANIFEST_DIR`), so `cargo run` works from any cwd. Achievements persist to `saves/pong_achievements.json`; achievement definitions and unlock logic live in `achievements.rs` and register with the engine's achievement system in `init()`.
