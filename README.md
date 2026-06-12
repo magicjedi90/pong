@@ -69,15 +69,24 @@ scene editor — useful for inspecting and tuning entities while the game runs:
 
 ```
 src/
-├── main.rs        # Game trait impl, window/config setup, editor wiring
-├── constants.rs   # All gameplay tuning values (sizes, speeds, layout)
-├── types.rs       # PongGame state, GameMode, Difficulty, GameState
-├── spawning.rs    # Entity creation (paddles, ball, walls, goals, background)
-├── gameplay.rs    # Match update loop, paddle control, AI, scoring
-├── menu.rs        # Title / difficulty / chaos / achievements screens
-├── power_ups.rs   # Power-up spawning and effects
-├── effects.rs     # Deforming grid background, hit effects
-├── chaos_theme.rs # Per-chaos-mode color themes
-├── achievements.rs# Achievement definitions
-└── drawing.rs     # UI/text drawing helpers
+├── main.rs          # Game trait impl, window/config setup, editor wiring
+├── constants.rs     # All gameplay tuning values (sizes, speeds, layout)
+├── types.rs         # PongGame state (Playfield, Balls, Scoreboard, ...) and enums
+├── spawning.rs      # All entity creation, each entity Named for the editor
+├── gameplay/
+│   ├── mod.rs       # Match update loop orchestration, grid step/ripple
+│   ├── paddles.rs   # Player paddle control and CPU AI
+│   ├── balls.rs     # Ball speed maintenance, extra-ball spawn/teardown
+│   ├── scoring.rs   # Goal detection, point awards, win condition
+│   └── flow.rs      # Serve/game-over input, match start/reset, visibility
+├── menu.rs          # Title / difficulty / chaos / achievements navigation
+├── power_ups.rs     # Power-up timing and pickup effects
+├── effects.rs       # Deforming grid background, hit effects
+├── chaos_theme.rs   # Per-chaos-mode color themes
+├── achievements.rs  # Achievement definitions
+└── ui.rs            # Menu screens and in-match HUD text
 ```
+
+Every spawned entity carries a `Name` component ("Left Paddle", "Ball",
+"Top Wall", "Power-Up (Multi-Ball)", ...), so the editor hierarchy shows
+readable names instead of `Entity 7`.

@@ -91,7 +91,7 @@ impl PongGame {
     /// The left paddle is always the local player (single-player) or player 1
     /// (two-player), so `left_wins` tells us whether the local player won.
     pub(crate) fn unlock_win_achievements(&self, ctx: &mut GameContext, left_wins: bool) {
-        match self.mode {
+        match self.settings.mode {
             GameMode::TwoPlayer => {
                 // "Friendly Rivalry" fires regardless of who won — it's for
                 // *playing* a 2P match to completion.
@@ -100,7 +100,7 @@ impl PongGame {
             GameMode::SinglePlayer if left_wins => {
                 // CPU-win cascade: winning at a harder difficulty also grants
                 // the easier ones (implies you could've won those too).
-                let cpu_ids: &[&str] = match self.difficulty {
+                let cpu_ids: &[&str] = match self.settings.difficulty {
                     Difficulty::Easy   => &[BEAT_CPU_EASY],
                     Difficulty::Medium => &[BEAT_CPU_EASY, BEAT_CPU_MEDIUM],
                     Difficulty::Hard   => &[BEAT_CPU_EASY, BEAT_CPU_MEDIUM, BEAT_CPU_HARD],
@@ -109,13 +109,13 @@ impl PongGame {
                     ctx.achievements.unlock(id);
                 }
 
-                // Chaos-mode win. Pong mutates `self.chaos_mode` from its own
-                // menu, so it's the source of truth (not `ctx.chaos_mode`).
-                ctx.achievements.unlock(chaos_win_id(self.chaos_mode));
+                // Chaos-mode win. Pong mutates `self.settings.chaos` from its
+                // own menu, so it's the source of truth (not `ctx.chaos_mode`).
+                ctx.achievements.unlock(chaos_win_id(self.settings.chaos));
 
                 // Shutout — mode-specific, difficulty ignored.
-                if self.score_right == 0 {
-                    ctx.achievements.unlock(chaos_shutout_id(self.chaos_mode));
+                if self.score.right == 0 {
+                    ctx.achievements.unlock(chaos_shutout_id(self.settings.chaos));
                 }
             }
             _ => {} // Single-player loss — no achievements.

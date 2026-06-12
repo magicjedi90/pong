@@ -1,6 +1,8 @@
+//! All on-screen text: menu screens, the achievements page, and the in-match
+//! HUD (score, banners, serve/game-over prompts).
+
 use engine_core::prelude::*;
 use crate::achievements::DISPLAY_SECTIONS;
-use crate::chaos_theme::ChaosTheme;
 use crate::types::*;
 
 impl PongGame {
@@ -10,7 +12,7 @@ impl PongGame {
             GameState::DifficultySelect { selection } => self.draw_difficulty(ctx, *selection),
             GameState::ChaosSelect { selection } => self.draw_chaos(ctx, *selection),
             GameState::Achievements => self.draw_achievements(ctx),
-            _ => self.draw_gameplay(ctx),
+            _ => self.draw_gameplay_hud(ctx),
         }
     }
 
@@ -122,25 +124,25 @@ impl PongGame {
         ctx.ui.label_centered("SPACE to confirm, ESC to go back", Vec2::new(cx, 400.0));
     }
 
-    fn draw_gameplay(&self, ctx: &mut GameContext) {
+    fn draw_gameplay_hud(&self, ctx: &mut GameContext) {
         let cx = ctx.window_size.x / 2.0;
         let cy = ctx.window_size.y / 2.0;
 
-        let score_text = match self.mode {
-            GameMode::SinglePlayer => format!("YOU {}  :  {} CPU", self.score_left, self.score_right),
-            GameMode::TwoPlayer => format!("P1 {}  :  {} P2", self.score_left, self.score_right),
+        let score_text = match self.settings.mode {
+            GameMode::SinglePlayer => format!("YOU {}  :  {} CPU", self.score.left, self.score.right),
+            GameMode::TwoPlayer => format!("P1 {}  :  {} P2", self.score.left, self.score.right),
         };
         ctx.ui.label_centered(&score_text, Vec2::new(cx, 24.0));
 
-        let theme = ChaosTheme::for_mode(self.chaos_mode);
+        let theme = self.current_theme();
         if let Some(banner) = theme.banner_text {
             let color = Color::new(theme.banner_color.x, theme.banner_color.y, theme.banner_color.z, theme.banner_color.w);
             ctx.ui.label_centered_styled(banner, Vec2::new(cx, ctx.window_size.y - 24.0), color, 16.0);
         }
 
-        if self.speed_boost_timer > 0.0 {
+        if self.power_ups.speed_boost_timer > 0.0 {
             ctx.ui.label_centered(
-                &format!("SPEED BOOST {:.1}s", self.speed_boost_timer),
+                &format!("SPEED BOOST {:.1}s", self.power_ups.speed_boost_timer),
                 Vec2::new(cx, 48.0),
             );
         }
@@ -151,7 +153,7 @@ impl PongGame {
                 ctx.ui.label_centered("ESC for title screen", Vec2::new(cx, cy - 24.0));
             }
             GameState::GameOver { left_wins } => {
-                let msg = match (self.mode, *left_wins) {
+                let msg = match (self.settings.mode, *left_wins) {
                     (GameMode::SinglePlayer, true) => "YOU WIN!",
                     (GameMode::SinglePlayer, false) => "CPU WINS!",
                     (GameMode::TwoPlayer, true) => "PLAYER 1 WINS!",

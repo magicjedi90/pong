@@ -1,16 +1,15 @@
 mod achievements;
 mod chaos_theme;
 mod constants;
-mod drawing;
 mod effects;
 mod gameplay;
 mod menu;
 mod power_ups;
 mod spawning;
 mod types;
+mod ui;
 
 use engine_core::prelude::*;
-use chaos_theme::ChaosTheme;
 use constants::*;
 use spawning::*;
 use types::*;
@@ -41,29 +40,33 @@ impl Game for PongGame {
         achievements::register_all(ctx.achievements);
 
         let tex = ctx.assets.create_solid_color(1, 1, [255, 255, 255, 255]).unwrap();
-        self.tex_id = tex.id;
+        self.textures.white = tex.id;
         // Relative paths resolve against the asset base path set in main().
-        self.paddle_tex_id = ctx.assets.load_texture("paddle_16px.png")
+        self.textures.paddle = ctx.assets.load_texture("paddle_16px.png")
             .expect("missing assets/paddle_16px.png").id;
-        self.ball_tex_id = ctx.assets.load_texture("ball_8px.png")
+        self.textures.ball = ctx.assets.load_texture("ball_8px.png")
             .expect("missing assets/ball_8px.png").id;
 
-        let theme = ChaosTheme::for_mode(self.chaos_mode);
-        self.background = Some(spawn_background(&mut ctx.world, tex.id, theme.bg_color));
+        let theme = self.current_theme();
+        self.playfield.background = Some(spawn_background(&mut ctx.world, tex.id, theme.bg_color));
 
         // Left paddle: rounded face naturally on the right (toward the ball).
         // Right paddle: mirror so its rounded face points left (toward the ball).
-        self.left_paddle = Some(spawn_paddle(&mut ctx.world, -PADDLE_X, self.paddle_tex_id, LEFT_COLOR, false));
-        self.right_paddle = Some(spawn_paddle(&mut ctx.world, PADDLE_X, self.paddle_tex_id, RIGHT_COLOR, true));
-        self.ball = Some(self.spawn_ball(&mut ctx.world));
+        self.playfield.left_paddle = Some(spawn_paddle(
+            &mut ctx.world, "Left Paddle", -PADDLE_X, self.textures.paddle, LEFT_COLOR, false));
+        self.playfield.right_paddle = Some(spawn_paddle(
+            &mut ctx.world, "Right Paddle", PADDLE_X, self.textures.paddle, RIGHT_COLOR, true));
+        self.balls.primary = Some(self.spawn_ball(&mut ctx.world, "Ball"));
 
         let wall_y = WIN_H / 2.0 - 10.0;
-        self.walls.push(spawn_wall(&mut ctx.world, Vec2::new(0.0, wall_y), WIN_W, 20.0, tex.id, theme.wall_color));
-        self.walls.push(spawn_wall(&mut ctx.world, Vec2::new(0.0, -wall_y), WIN_W, 20.0, tex.id, theme.wall_color));
+        self.playfield.walls.push(spawn_wall(
+            &mut ctx.world, "Top Wall", Vec2::new(0.0, wall_y), WIN_W, 20.0, tex.id, theme.wall_color));
+        self.playfield.walls.push(spawn_wall(
+            &mut ctx.world, "Bottom Wall", Vec2::new(0.0, -wall_y), WIN_W, 20.0, tex.id, theme.wall_color));
 
         let goal_x = WIN_W / 2.0 + 10.0;
-        self.left_goal = Some(spawn_goal_sensor(&mut ctx.world, -goal_x));
-        self.right_goal = Some(spawn_goal_sensor(&mut ctx.world, goal_x));
+        self.playfield.left_goal = Some(spawn_goal_sensor(&mut ctx.world, "Left Goal", -goal_x));
+        self.playfield.right_goal = Some(spawn_goal_sensor(&mut ctx.world, "Right Goal", goal_x));
 
         // Build the deforming grid background.
         self.grid = Some(effects::build_grid(&theme));
