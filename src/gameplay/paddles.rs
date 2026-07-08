@@ -53,7 +53,7 @@ impl PongGame {
     /// with a dead zone so easier CPUs wobble less precisely.
     fn ai_dy(&self, ctx: &GameContext, paddle: EntityId) -> f32 {
         let Some(ball) = self.balls.primary else { return 0.0 };
-        let diff = entity_y(&ctx.world, ball) - entity_y(&ctx.world, paddle);
+        let diff = entity_y(ctx.world, ball) - entity_y(ctx.world, paddle);
         if diff.abs() > self.settings.difficulty.ai_dead_zone() {
             diff.signum() * self.settings.difficulty.ai_speed()
         } else {
@@ -62,7 +62,7 @@ impl PongGame {
     }
 
     fn move_paddle(&mut self, ctx: &GameContext, paddle: EntityId, x: f32, dy: f32) {
-        let y = entity_y(&ctx.world, paddle);
+        let y = entity_y(ctx.world, paddle);
         let new_y = (y + dy * ctx.delta_time).clamp(-PADDLE_MAX_Y, PADDLE_MAX_Y);
         self.physics.set_kinematic_target(paddle, Vec2::new(x, new_y), 0.0);
     }

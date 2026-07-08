@@ -3,7 +3,7 @@
 
 use engine_core::prelude::*;
 use crate::constants::*;
-use crate::types::{PongGame, PowerUpKind, SpawnedPowerUp};
+use crate::types::{PongGame, PowerUpKind};
 
 /// Spawn one paddle. The source `paddle_16px.png` has its flat face on the
 /// left and rounded face on the right; pass `mirror = true` for the right
@@ -126,6 +126,6 @@ impl PongGame {
             .with(RigidBody::new_static())
             .with(Collider::circle_collider(POWERUP_SIZE / 2.0).as_sensor())
             .id();
-        self.power_ups.active.push(SpawnedPowerUp { entity, kind });
+        self.power_ups.active.track(entity, kind);
     }
 }

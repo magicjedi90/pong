@@ -47,7 +47,7 @@ impl PongGame {
         let bound_x = WIN_W / 2.0 + 60.0;
         let bound_y = WIN_H / 2.0 + 60.0;
         for ball in self.balls.all() {
-            let Some(pos) = entity_position(&ctx.world, ball) else { continue };
+            let Some(pos) = entity_position(ctx.world, ball) else { continue };
             let escaped = !pos.x.is_finite()
                 || !pos.y.is_finite()
                 || pos.x.abs() > bound_x
@@ -56,7 +56,7 @@ impl PongGame {
 
             let side = if pos.x >= 0.0 { Side::Left } else { Side::Right };
             self.score.award_point(side);
-            self.destroy_ball(&mut ctx.world, ball);
+            self.destroy_ball(ctx.world, ball);
             any_scored = true;
         }
         any_scored
@@ -147,7 +147,7 @@ impl PongGame {
                 } else {
                     continue;
                 };
-                let Some(ball_pos) = entity_position(&ctx.world, b) else { continue };
+                let Some(ball_pos) = entity_position(ctx.world, b) else { continue };
                 // Normal points from the paddle toward the ball — i.e. the
                 // direction the ball is bouncing in. That's the cone direction
                 // for the spray.
@@ -167,7 +167,7 @@ impl PongGame {
     fn score_ball(&mut self, ctx: &mut GameContext, ball: EntityId, side: Side) {
         // Capture the ball's last position before we destroy it so the
         // explosion burst spawns at the right place.
-        let explosion_pos = entity_position(&ctx.world, ball)
+        let explosion_pos = entity_position(ctx.world, ball)
             .unwrap_or_else(|| match side {
                 // Fallback: goal location, in case the entity was already gone.
                 Side::Right => Vec2::new(-PADDLE_X, 0.0),
@@ -184,18 +184,18 @@ impl PongGame {
         self.ripple_grid(explosion_pos, 800.0, 180.0);
 
         self.score.award_point(side);
-        self.destroy_ball(&mut ctx.world, ball);
+        self.destroy_ball(ctx.world, ball);
     }
 
     /// All balls gone — clear transient match state and spawn a fresh
     /// primary ball at center for the next serve.
     fn respawn_for_serve(&mut self, ctx: &mut GameContext) {
-        self.destroy_all_powerups(&mut ctx.world);
-        self.power_ups.speed_boost_timer = 0.0;
+        self.destroy_all_powerups(ctx.world);
+        self.power_ups.speed_boost.stop();
         self.score.last_touch = None;
         self.balls.speed_mult.clear();
 
-        let fresh = self.spawn_ball(&mut ctx.world, "Ball");
+        let fresh = self.spawn_ball(ctx.world, "Ball");
         self.balls.primary = Some(fresh);
         self.physics.reset_body(fresh, Vec2::ZERO);
         let ball_color = self.current_theme().ball_color;
@@ -217,9 +217,9 @@ impl PongGame {
         };
 
         if let Some(left_wins) = winner {
-            self.destroy_all_extra_balls(&mut ctx.world);
-            self.destroy_all_powerups(&mut ctx.world);
-            self.power_ups.speed_boost_timer = 0.0;
+            self.destroy_all_extra_balls(ctx.world);
+            self.destroy_all_powerups(ctx.world);
+            self.power_ups.speed_boost.stop();
             self.unlock_win_achievements(ctx, left_wins);
             self.state = GameState::GameOver { left_wins };
         }

@@ -62,11 +62,6 @@ impl PowerUpKind {
     }
 }
 
-pub(crate) struct SpawnedPowerUp {
-    pub(crate) entity: EntityId,
-    pub(crate) kind: PowerUpKind,
-}
-
 /// Handles to the long-lived playfield entities, spawned once in `init()`.
 #[derive(Default)]
 pub(crate) struct Playfield {
@@ -143,18 +138,19 @@ impl Default for Scoreboard {
     }
 }
 
-/// Live power-up entities and their timers.
+/// Live power-up entities and their timers (tracking/collection mechanics
+/// live in the engine's `Pickups`/`EffectTimer`; this holds Pong's usage).
 pub(crate) struct PowerUpState {
-    pub(crate) active: Vec<SpawnedPowerUp>,
-    pub(crate) speed_boost_timer: f32,
+    pub(crate) active: Pickups<PowerUpKind>,
+    pub(crate) speed_boost: EffectTimer,
     pub(crate) spawn_timer: f32,
 }
 
 impl Default for PowerUpState {
     fn default() -> Self {
         Self {
-            active: Vec::new(),
-            speed_boost_timer: 0.0,
+            active: Pickups::new(),
+            speed_boost: EffectTimer::default(),
             spawn_timer: crate::constants::POWERUP_INITIAL_DELAY,
         }
     }

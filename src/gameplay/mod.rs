@@ -37,7 +37,7 @@ impl PongGame {
         }
 
         self.update_paddles(ctx);
-        self.physics.update(&mut ctx.world, ctx.delta_time);
+        self.physics.update(ctx.world, ctx.delta_time);
 
         // Snapshot this frame's collision events once. Every consumer below
         // works from this slice instead of re-reading collision_events(), so
@@ -69,7 +69,7 @@ impl PongGame {
         if self.debug_colliders {
             // Bright magenta with high emissive so the outline blooms and
             // sits visibly above every sprite.
-            debug::draw_colliders(&ctx.world, ctx.lines, Vec4::new(1.0, 0.2, 1.0, 0.9), 2.0);
+            debug::draw_colliders(ctx.world, ctx.lines, Vec4::new(1.0, 0.2, 1.0, 0.9), 2.0);
         }
     }
 

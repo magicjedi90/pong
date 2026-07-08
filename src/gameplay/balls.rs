@@ -29,7 +29,7 @@ impl PongGame {
         let Some((vel, _)) = self.physics.get_body_velocity(ball) else { return };
         if vel.x.abs() < 0.1 { return; }
 
-        let boost = if self.power_ups.speed_boost_timer > 0.0 { SPEED_BOOST_MULTIPLIER } else { 1.0 };
+        let boost = if self.power_ups.speed_boost.active() { SPEED_BOOST_MULTIPLIER } else { 1.0 };
         let chaos_mult = self.balls.speed_mult.get(&ball).copied().unwrap_or(1.0);
 
         let speed = BALL_INITIAL_SPEED * boost * chaos_mult;
@@ -47,13 +47,13 @@ impl PongGame {
     /// Multi-ball power-up: spawn a new ball at the source ball's position,
     /// fired toward the opposite side, tinted to match its source.
     pub(crate) fn spawn_extra_ball(&mut self, ctx: &mut GameContext, source_ball: EntityId) {
-        let pos = entity_position(&ctx.world, source_ball).unwrap_or(Vec2::ZERO);
+        let pos = entity_position(ctx.world, source_ball).unwrap_or(Vec2::ZERO);
         let source_vx = self.physics.get_body_velocity(source_ball)
             .map(|(v, _)| v.x)
             .unwrap_or(BALL_INITIAL_SPEED);
 
         let name = self.next_extra_ball_name();
-        let entity = self.spawn_ball(&mut ctx.world, &name);
+        let entity = self.spawn_ball(ctx.world, &name);
         if let Some(transform) = ctx.world.get_mut::<Transform2D>(entity) {
             transform.position = pos;
         }

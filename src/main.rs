@@ -48,25 +48,25 @@ impl Game for PongGame {
             .expect("missing assets/ball_8px.png").id;
 
         let theme = self.current_theme();
-        self.playfield.background = Some(spawn_background(&mut ctx.world, tex.id, theme.bg_color));
+        self.playfield.background = Some(spawn_background(ctx.world, tex.id, theme.bg_color));
 
         // Left paddle: rounded face naturally on the right (toward the ball).
         // Right paddle: mirror so its rounded face points left (toward the ball).
         self.playfield.left_paddle = Some(spawn_paddle(
-            &mut ctx.world, "Left Paddle", -PADDLE_X, self.textures.paddle, LEFT_COLOR, false));
+            ctx.world, "Left Paddle", -PADDLE_X, self.textures.paddle, LEFT_COLOR, false));
         self.playfield.right_paddle = Some(spawn_paddle(
-            &mut ctx.world, "Right Paddle", PADDLE_X, self.textures.paddle, RIGHT_COLOR, true));
-        self.balls.primary = Some(self.spawn_ball(&mut ctx.world, "Ball"));
+            ctx.world, "Right Paddle", PADDLE_X, self.textures.paddle, RIGHT_COLOR, true));
+        self.balls.primary = Some(self.spawn_ball(ctx.world, "Ball"));
 
         let wall_y = WIN_H / 2.0 - 10.0;
         self.playfield.walls.push(spawn_wall(
-            &mut ctx.world, "Top Wall", Vec2::new(0.0, wall_y), WIN_W, 20.0, tex.id, theme.wall_color));
+            ctx.world, "Top Wall", Vec2::new(0.0, wall_y), WIN_W, 20.0, tex.id, theme.wall_color));
         self.playfield.walls.push(spawn_wall(
-            &mut ctx.world, "Bottom Wall", Vec2::new(0.0, -wall_y), WIN_W, 20.0, tex.id, theme.wall_color));
+            ctx.world, "Bottom Wall", Vec2::new(0.0, -wall_y), WIN_W, 20.0, tex.id, theme.wall_color));
 
         let goal_x = WIN_W / 2.0 + 10.0;
-        self.playfield.left_goal = Some(spawn_goal_sensor(&mut ctx.world, "Left Goal", -goal_x));
-        self.playfield.right_goal = Some(spawn_goal_sensor(&mut ctx.world, "Right Goal", goal_x));
+        self.playfield.left_goal = Some(spawn_goal_sensor(ctx.world, "Left Goal", -goal_x));
+        self.playfield.right_goal = Some(spawn_goal_sensor(ctx.world, "Right Goal", goal_x));
 
         // Build the deforming grid background.
         self.grid = Some(effects::build_grid(&theme));

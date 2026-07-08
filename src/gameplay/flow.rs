@@ -13,16 +13,16 @@ impl PongGame {
         match &self.state {
             GameState::Serving => {
                 if ctx.input.is_key_just_pressed(KeyCode::Escape) {
-                    self.reset_to_title(&mut ctx.world);
+                    self.reset_to_title(ctx.world);
                 } else if ctx.input.is_key_just_pressed(KeyCode::Space) {
                     self.serve(ctx);
                 }
             }
             GameState::GameOver { .. } => {
                 if ctx.input.is_key_just_pressed(KeyCode::Space) {
-                    self.start_game(&mut ctx.world);
+                    self.start_game(ctx.world);
                 } else if ctx.input.is_key_just_pressed(KeyCode::Escape) {
-                    self.reset_to_title(&mut ctx.world);
+                    self.reset_to_title(ctx.world);
                 }
             }
             _ => {}
@@ -43,7 +43,7 @@ impl PongGame {
 
         if self.settings.chaos.is_ridiculous() {
             let name = self.next_extra_ball_name();
-            let extra = self.spawn_ball(&mut ctx.world, &name);
+            let extra = self.spawn_ball(ctx.world, &name);
             let ball_color = self.current_theme().ball_color;
             if let Some(s) = ctx.world.get_mut::<Sprite>(extra) {
                 s.color = ball_color;
@@ -72,7 +72,7 @@ impl PongGame {
     pub(crate) fn reset_to_title(&mut self, world: &mut World) {
         self.destroy_all_extra_balls(world);
         self.destroy_all_powerups(world);
-        self.power_ups.speed_boost_timer = 0.0;
+        self.power_ups.speed_boost.stop();
         self.reset_positions();
         self.state = GameState::TitleScreen { selection: 0 };
     }
@@ -117,7 +117,7 @@ impl PongGame {
         let entities = [self.playfield.left_paddle, self.playfield.right_paddle].into_iter().flatten()
             .chain(self.balls.all())
             .chain(self.playfield.walls.iter().copied())
-            .chain(self.power_ups.active.iter().map(|p| p.entity));
+            .chain(self.power_ups.active.entities());
         for entity in entities {
             if let Some(sprite) = ctx.world.get_mut::<Sprite>(entity) {
                 sprite.visible = visible;

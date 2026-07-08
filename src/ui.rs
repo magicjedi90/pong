@@ -140,9 +140,9 @@ impl PongGame {
             ctx.ui.label_centered_styled(banner, Vec2::new(cx, ctx.window_size.y - 24.0), color, 16.0);
         }
 
-        if self.power_ups.speed_boost_timer > 0.0 {
+        if self.power_ups.speed_boost.active() {
             ctx.ui.label_centered(
-                &format!("SPEED BOOST {:.1}s", self.power_ups.speed_boost_timer),
+                &format!("SPEED BOOST {:.1}s", self.power_ups.speed_boost.remaining()),
                 Vec2::new(cx, 48.0),
             );
         }

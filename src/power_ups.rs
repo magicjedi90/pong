@@ -30,7 +30,7 @@ impl PongGame {
         }
 
         // Pick random kind
-        let kind = if hash(self.frame_count) % 2 == 0 {
+        let kind = if hash(self.frame_count).is_multiple_of(2) {
             PowerUpKind::SpeedBoost
         } else {
             PowerUpKind::MultiBall
@@ -39,7 +39,7 @@ impl PongGame {
         // Random position in the middle area (avoid paddles and edges)
         let x = hash_f32(self.frame_count.wrapping_add(1)) * 400.0 - 200.0;
         let y = hash_f32(self.frame_count.wrapping_add(2)) * 400.0 - 200.0;
-        self.spawn_power_up(&mut ctx.world, kind, Vec2::new(x, y));
+        self.spawn_power_up(ctx.world, kind, Vec2::new(x, y));
 
         // Reset timer to random interval
         let t = hash_f32(self.frame_count.wrapping_add(3));
@@ -53,53 +53,31 @@ impl PongGame {
     ) {
         let all_balls = self.balls.all();
 
-        // Collect what was hit (index, kind, which ball triggered it)
-        let mut hits: Vec<(usize, PowerUpKind, EntityId)> = Vec::new();
-        for collision in collisions {
-            if !collision.event.started { continue; }
-            for (i, powerup) in self.power_ups.active.iter().enumerate() {
-                for &b in &all_balls {
-                    if collision.event.involves(b, powerup.entity) {
-                        hits.push((i, powerup.kind, b));
-                    }
-                }
-            }
-        }
+        // Engine-side collection: each pickup grants its effect exactly once,
+        // even if two balls touch it in the same frame.
+        let collected =
+            self.power_ups
+                .active
+                .collect(collisions, &all_balls, &mut self.physics, ctx.world);
 
-        // Apply effects and remove consumed power-ups. Sort before dedup —
-        // hits are ordered by collision event, so equal indices may not be
-        // adjacent, and the reverse removal below needs ascending order.
-        let mut consumed_indices: Vec<usize> = hits.iter().map(|(i, _, _)| *i).collect();
-        consumed_indices.sort_unstable();
-        consumed_indices.dedup();
-
-        for &(_, kind, ball_id) in &hits {
+        for (kind, ball_id) in collected {
             match kind {
                 PowerUpKind::SpeedBoost => {
-                    self.power_ups.speed_boost_timer = SPEED_BOOST_DURATION;
+                    self.power_ups.speed_boost.start(SPEED_BOOST_DURATION);
                 }
                 PowerUpKind::MultiBall => {
                     self.spawn_extra_ball(ctx, ball_id);
                 }
             }
         }
-
-        for &i in consumed_indices.iter().rev() {
-            let powerup = self.power_ups.active.remove(i);
-            self.physics.destroy_entity(&mut ctx.world, powerup.entity);
-        }
     }
 
     pub(crate) fn update_speed_boost(&mut self, delta_time: f32) {
-        if self.power_ups.speed_boost_timer > 0.0 {
-            self.power_ups.speed_boost_timer =
-                (self.power_ups.speed_boost_timer - delta_time).max(0.0);
-        }
+        // Speed boost has no visuals to revert, so the expiry signal is unused.
+        let _ = self.power_ups.speed_boost.tick(delta_time);
     }
 
     pub(crate) fn destroy_all_powerups(&mut self, world: &mut World) {
-        for powerup in self.power_ups.active.drain(..) {
-            self.physics.destroy_entity(world, powerup.entity);
-        }
+        self.power_ups.active.clear(&mut self.physics, world);
     }
 }
