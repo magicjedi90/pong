@@ -1,5 +1,4 @@
 mod achievements;
-mod chaos_theme;
 mod constants;
 mod effects;
 mod gameplay;
@@ -14,25 +13,9 @@ use constants::*;
 use spawning::*;
 use types::*;
 
-/// Directory that holds the game's `assets/` and `saves/` folders.
-///
-/// Prefers the executable's directory (shipped layout: assets next to the
-/// binary), falling back to the crate directory so `cargo run` works from
-/// any current working directory.
-fn game_root() -> std::path::PathBuf {
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(dir) = exe.parent() {
-            if dir.join("assets").is_dir() {
-                return dir.to_path_buf();
-            }
-        }
-    }
-    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-}
-
 impl Game for PongGame {
     fn init(&mut self, ctx: &mut GameContext) {
-        let font_path = game_root().join("assets/fonts/font.ttf");
+        let font_path = engine_core::game_root!().join("assets/fonts/font.ttf");
         if let Ok(font) = ctx.ui.load_font_file(&font_path.to_string_lossy()) {
             ctx.ui.set_default_font(font);
         }
@@ -48,7 +31,8 @@ impl Game for PongGame {
             .expect("missing assets/ball_8px.png").id;
 
         let theme = self.current_theme();
-        self.playfield.background = Some(spawn_background(ctx.world, tex.id, theme.bg_color));
+        self.playfield.background = Some(spawn_background(
+            ctx.world, tex.id, theme.bg_color, Vec2::new(WIN_W, WIN_H)));
 
         // Left paddle: rounded face naturally on the right (toward the ball).
         // Right paddle: mirror so its rounded face points left (toward the ball).
@@ -60,16 +44,16 @@ impl Game for PongGame {
 
         let wall_y = WIN_H / 2.0 - 10.0;
         self.playfield.walls.push(spawn_wall(
-            ctx.world, "Top Wall", Vec2::new(0.0, wall_y), WIN_W, 20.0, tex.id, theme.wall_color));
+            ctx.world, "Top Wall", Vec2::new(0.0, wall_y), WIN_W, 20.0, tex.id, theme.structure_color));
         self.playfield.walls.push(spawn_wall(
-            ctx.world, "Bottom Wall", Vec2::new(0.0, -wall_y), WIN_W, 20.0, tex.id, theme.wall_color));
+            ctx.world, "Bottom Wall", Vec2::new(0.0, -wall_y), WIN_W, 20.0, tex.id, theme.structure_color));
 
         let goal_x = WIN_W / 2.0 + 10.0;
         self.playfield.left_goal = Some(spawn_goal_sensor(ctx.world, "Left Goal", -goal_x));
         self.playfield.right_goal = Some(spawn_goal_sensor(ctx.world, "Right Goal", goal_x));
 
         // Build the deforming grid background.
-        self.grid = Some(effects::build_grid(&theme));
+        self.grid = Some(default_playfield_grid(&theme));
     }
 
     fn update(&mut self, ctx: &mut GameContext) {
@@ -91,7 +75,7 @@ impl Game for PongGame {
 fn main() {
     // Anchor assets and saves to the game's directory so launching from any
     // working directory behaves the same.
-    let root = game_root();
+    let root = engine_core::game_root!();
     let config = GameConfig::new("Insiculous Pong")
         .with_size(WIN_W as u32, WIN_H as u32)
         .with_clear_color(0.0, 0.0, 0.0, 1.0)

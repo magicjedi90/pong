@@ -3,8 +3,6 @@ use engine_core::prelude::*;
 pub(crate) const WIN_W: f32 = 800.0;
 pub(crate) const WIN_H: f32 = 600.0;
 
-// The renderer multiplies Transform2D.scale by 80 to get pixel size.
-const RENDER_UNIT: f32 = 80.0;
 
 pub(crate) const PADDLE_W: f32 = 20.0;
 pub(crate) const PADDLE_H: f32 = 120.0;

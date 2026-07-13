@@ -44,7 +44,7 @@ impl PongGame {
         if self.settings.chaos.is_ridiculous() {
             let name = self.next_extra_ball_name();
             let extra = self.spawn_ball(ctx.world, &name);
-            let ball_color = self.current_theme().ball_color;
+            let ball_color = self.current_theme().accent_color;
             if let Some(s) = ctx.world.get_mut::<Sprite>(extra) {
                 s.color = ball_color;
             }
@@ -86,10 +86,10 @@ impl PongGame {
             if let Some(s) = world.get_mut::<Sprite>(bg) { s.color = theme.bg_color; }
         }
         for &w in &self.playfield.walls {
-            if let Some(s) = world.get_mut::<Sprite>(w) { s.color = theme.wall_color; }
+            if let Some(s) = world.get_mut::<Sprite>(w) { s.color = theme.structure_color; }
         }
         for ball in self.balls.all() {
-            if let Some(s) = world.get_mut::<Sprite>(ball) { s.color = theme.ball_color; }
+            if let Some(s) = world.get_mut::<Sprite>(ball) { s.color = theme.accent_color; }
         }
     }
 
@@ -118,10 +118,6 @@ impl PongGame {
             .chain(self.balls.all())
             .chain(self.playfield.walls.iter().copied())
             .chain(self.power_ups.active.entities());
-        for entity in entities {
-            if let Some(sprite) = ctx.world.get_mut::<Sprite>(entity) {
-                sprite.visible = visible;
-            }
-        }
+        set_sprites_visible(ctx.world, entities, visible);
     }
 }

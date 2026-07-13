@@ -198,7 +198,7 @@ impl PongGame {
         let fresh = self.spawn_ball(ctx.world, "Ball");
         self.balls.primary = Some(fresh);
         self.physics.reset_body(fresh, Vec2::ZERO);
-        let ball_color = self.current_theme().ball_color;
+        let ball_color = self.current_theme().accent_color;
         if let Some(s) = ctx.world.get_mut::<Sprite>(fresh) {
             s.color = ball_color;
         }

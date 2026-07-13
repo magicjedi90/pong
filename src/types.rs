@@ -1,7 +1,6 @@
 use engine_core::prelude::*;
 use std::collections::HashMap;
 
-use crate::chaos_theme::ChaosTheme;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum Side { Left, Right }

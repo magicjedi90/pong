@@ -39,10 +39,10 @@ impl PongGame {
         self.update_paddles(ctx);
         self.physics.update(ctx.world, ctx.delta_time);
 
-        // Snapshot this frame's collision events once. Every consumer below
-        // works from this slice instead of re-reading collision_events(), so
-        // gameplay never depends on how long physics retains its buffer.
-        let collisions: Vec<CollisionData> = self.physics.collision_events().to_vec();
+        // Drain this frame's collision events once (take = the buffer is
+        // consumed, not borrowed). Every consumer below shares this Vec, and
+        // no borrow of `self.physics` is held while reacting.
+        let collisions: Vec<CollisionData> = self.physics.take_collision_events();
 
         self.handle_gameplay_input(ctx);
         self.maintain_all_ball_velocities();
@@ -54,23 +54,9 @@ impl PongGame {
 
         // Step + render the deforming grid after gameplay so it reacts to
         // this frame's collisions.
-        self.step_and_emit_grid(ctx);
-    }
-
-    /// Advance the spring-mass grid and push its line vertices into the
-    /// engine's per-frame line buffer. When the collider-debug overlay is
-    /// enabled, the collider outlines are pushed on top.
-    fn step_and_emit_grid(&mut self, ctx: &mut GameContext) {
-        if let Some(grid) = self.grid.as_mut() {
-            grid.step(ctx.delta_time);
-            let verts = grid.build_line_vertices();
-            ctx.lines.extend_from_slice(verts);
-        }
-        if self.debug_colliders {
-            // Bright magenta with high emissive so the outline blooms and
-            // sits visibly above every sprite.
-            debug::draw_colliders(ctx.world, ctx.lines, Vec4::new(1.0, 0.2, 1.0, 0.9), 2.0);
-        }
+        engine_core::grid::step_and_emit_grid(
+            self.grid.as_mut(), ctx.world, ctx.lines, ctx.delta_time, self.debug_colliders,
+        );
     }
 
     /// Push a radial shockwave into the deforming grid (paddle hits, goals).

@@ -5,16 +5,6 @@ use engine_core::prelude::*;
 use crate::constants::*;
 use crate::types::*;
 
-/// Simple hash for pseudo-random values from frame count.
-fn hash(seed: u32) -> u32 {
-    seed.wrapping_mul(2654435761)
-}
-
-/// Map a hash to a float in [0, 1).
-fn hash_f32(seed: u32) -> f32 {
-    (hash(seed) >> 8) as f32 / 16777216.0
-}
-
 impl PongGame {
     pub(crate) fn update_powerup_spawns(&mut self, ctx: &mut GameContext) {
         if !matches!(self.state, GameState::Playing) {
@@ -30,7 +20,7 @@ impl PongGame {
         }
 
         // Pick random kind
-        let kind = if hash(self.frame_count).is_multiple_of(2) {
+        let kind = if hash_u32(self.frame_count).is_multiple_of(2) {
             PowerUpKind::SpeedBoost
         } else {
             PowerUpKind::MultiBall

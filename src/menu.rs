@@ -4,42 +4,9 @@
 use engine_core::prelude::*;
 use crate::types::*;
 
-/// One frame's worth of menu keys, read once per screen update.
-struct MenuInput {
-    up: bool,
-    down: bool,
-    confirm: bool,
-    back: bool,
-}
-
-impl MenuInput {
-    fn read(ctx: &GameContext) -> Self {
-        Self {
-            up: ctx.input.is_key_just_pressed(KeyCode::ArrowUp)
-                || ctx.input.is_key_just_pressed(KeyCode::KeyW),
-            down: ctx.input.is_key_just_pressed(KeyCode::ArrowDown)
-                || ctx.input.is_key_just_pressed(KeyCode::KeyS),
-            confirm: ctx.input.is_key_just_pressed(KeyCode::Space)
-                || ctx.input.is_key_just_pressed(KeyCode::Enter),
-            back: ctx.input.is_key_just_pressed(KeyCode::Escape),
-        }
-    }
-
-    /// Move `current` through a `count`-item list with wraparound.
-    fn navigate(&self, current: u8, count: u8) -> u8 {
-        if self.up {
-            if current == 0 { count - 1 } else { current - 1 }
-        } else if self.down {
-            (current + 1) % count
-        } else {
-            current
-        }
-    }
-}
-
 impl PongGame {
     pub(crate) fn update_title_input(&mut self, ctx: &mut GameContext, selection: u8) {
-        let input = MenuInput::read(ctx);
+        let input = MenuInput::read(ctx.input);
         let selection = input.navigate(selection, 3);
         self.state = GameState::TitleScreen { selection };
 
@@ -56,14 +23,14 @@ impl PongGame {
     }
 
     pub(crate) fn update_achievements_input(&mut self, ctx: &mut GameContext) {
-        let input = MenuInput::read(ctx);
+        let input = MenuInput::read(ctx.input);
         if input.back || input.confirm {
             self.state = GameState::TitleScreen { selection: 2 };
         }
     }
 
     pub(crate) fn update_difficulty_input(&mut self, ctx: &mut GameContext, selection: u8) {
-        let input = MenuInput::read(ctx);
+        let input = MenuInput::read(ctx.input);
         let selection = input.navigate(selection, 3);
         self.state = GameState::DifficultySelect { selection };
 
@@ -81,7 +48,7 @@ impl PongGame {
     }
 
     pub(crate) fn update_chaos_input(&mut self, ctx: &mut GameContext, selection: u8) {
-        let input = MenuInput::read(ctx);
+        let input = MenuInput::read(ctx.input);
         let count = ChaosMode::ALL.len() as u8;
         let selection = input.navigate(selection, count);
         self.state = GameState::ChaosSelect { selection };

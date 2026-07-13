@@ -1,20 +1,10 @@
-//! Visual effect presets — particle configs and grid setup.
+//! Visual effect presets — particle configs.
 //!
 //! Centralizes the look of each event (paddle hit, goal explosion) so tuning
-//! happens in one place.
+//! happens in one place. The deforming grid uses the engine's
+//! `default_playfield_grid` preset directly.
 
 use engine_core::prelude::*;
-
-use crate::chaos_theme::ChaosTheme;
-
-/// 32×24-node grid sized to cover the playfield with some overscan.
-pub(crate) fn build_grid(theme: &ChaosTheme) -> GridMesh {
-    GridMesh::new(32, 24, 36.0, Vec2::ZERO)
-        .with_color(theme.grid_color)
-        .with_emissive(0.7)
-        .with_stiffness(60.0)
-        .with_damping(0.07)
-}
 
 /// Particles thrown off a paddle hit. Cone aligned with the bounce normal so
 /// the spray reads as kinetic.

@@ -51,7 +51,6 @@ pub(crate) fn spawn_wall(
     tex: u32,
     color: Vec4,
 ) -> EntityId {
-    const RENDER_UNIT: f32 = 80.0;
     world.spawn()
         .with(Name::new(name))
         .with(Transform2D::from_parts(pos, 0.0, Vec2::new(w / RENDER_UNIT, h / RENDER_UNIT)))
@@ -59,20 +58,6 @@ pub(crate) fn spawn_wall(
         .with(Sprite::new(tex).with_color(color).with_depth(-1.0).with_emissive(0.6))
         .with(RigidBody::new_static())
         .with(Collider::box_collider(w, h).with_friction(0.0).with_restitution(1.0))
-        .id()
-}
-
-pub(crate) fn spawn_background(world: &mut World, tex: u32, color: Vec4) -> EntityId {
-    const RENDER_UNIT: f32 = 80.0;
-    // Slightly oversize so resizes don't reveal a seam.
-    let w = crate::constants::WIN_W * 1.2;
-    let h = crate::constants::WIN_H * 1.2;
-    world.spawn()
-        .with(Name::new("Background"))
-        .with(Transform2D::from_parts(Vec2::ZERO, 0.0, Vec2::new(w / RENDER_UNIT, h / RENDER_UNIT)))
-        // Background is intentionally non-emissive so the grid lines (drawn
-        // on top by the line pipeline) and gameplay sprites pop against it.
-        .with(Sprite::new(tex).with_color(color).with_depth(-100.0))
         .id()
 }
 
