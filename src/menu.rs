@@ -7,7 +7,7 @@ use crate::types::*;
 impl PongGame {
     pub(crate) fn update_title_input(&mut self, ctx: &mut GameContext, selection: u8) {
         let input = MenuInput::read(ctx.input);
-        let selection = input.navigate(selection, 3);
+        let selection = input.navigate(selection, 4);
         self.state = GameState::TitleScreen { selection };
 
         if input.confirm {
@@ -17,7 +17,8 @@ impl PongGame {
                     self.settings.mode = GameMode::TwoPlayer;
                     self.state = GameState::ChaosSelect { selection: 0 };
                 }
-                _ => self.state = GameState::Achievements,
+                2 => self.state = GameState::Achievements,
+                _ => ctx.exit_requested = true,
             }
         }
     }

@@ -8,16 +8,14 @@ use super::balls::serve_direction;
 
 impl PongGame {
     /// State transitions during a match: serve from `Serving`, restart or
-    /// bail to the title screen from `GameOver`. Either player's primary
-    /// action (Space/Enter/pad A) or menu action (Escape/pad Start) counts.
+    /// bail to the title screen from `GameOver`. Menu (Escape/pad Start)
+    /// during Serving/Playing is handled by the pause gate upstream.
     pub(crate) fn handle_gameplay_input(&mut self, ctx: &mut GameContext) {
         let primary = ctx.players.just_activated_any(GameAction::Action1, ctx.input);
         let menu = ctx.players.just_activated_any(GameAction::Menu, ctx.input);
         match &self.state {
             GameState::Serving => {
-                if menu {
-                    self.reset_to_title(ctx.world);
-                } else if primary {
+                if primary {
                     self.serve(ctx);
                 }
             }

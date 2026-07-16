@@ -1,11 +1,16 @@
 //! All on-screen text: menu screens, the achievements page, and the in-match
-//! HUD (score, banners, serve/game-over prompts).
+//! HUD (score, banners, serve/game-over prompts). Menu screens draw inside
+//! the engine's `MenuPanel` window chrome, styled from the chaos theme.
 
 use engine_core::prelude::*;
 use crate::achievements::DISPLAY_SECTIONS;
 use crate::types::*;
 
 impl PongGame {
+    fn menu_style(&self) -> MenuStyle {
+        MenuStyle::from_theme(&self.current_theme())
+    }
+
     pub(crate) fn draw_ui(&self, ctx: &mut GameContext) {
         match &self.state {
             GameState::TitleScreen { selection } => self.draw_title(ctx, *selection),
@@ -17,35 +22,34 @@ impl PongGame {
     }
 
     fn draw_title(&self, ctx: &mut GameContext, selection: u8) {
-        let cx = ctx.window_size.x / 2.0;
-
-        ctx.ui.label_centered("INSICULOUS PONG", Vec2::new(cx, 150.0));
-
-        let items = ["Single Player", "Two Player", "Achievements"];
+        let style = self.menu_style();
+        let panel = MenuPanel::new("INSICULOUS PONG", ctx.window_size / 2.0, 360.0, 4);
+        let mut y = panel.begin(ctx.ui, &style);
+        let items = ["Single Player", "Two Player", "Achievements", "Exit"];
         for (i, item) in items.iter().enumerate() {
-            let prefix = if i as u8 == selection { "> " } else { "  " };
-            ctx.ui.label_centered(&format!("{prefix}{item}"), Vec2::new(cx, 240.0 + i as f32 * 30.0));
+            y = panel.item(ctx.ui, y, item, i as u8 == selection, &style);
         }
-
-        ctx.ui.label_centered("W/S, Arrows, or D-Pad to navigate", Vec2::new(cx, 400.0));
-        ctx.ui.label_centered("SPACE or (A) to confirm", Vec2::new(cx, 424.0));
+        panel.hint(ctx.ui, "W/S or D-Pad navigate - SPACE or (A) confirm", &style);
     }
 
     fn draw_achievements(&self, ctx: &mut GameContext) {
-        let cx = ctx.window_size.x / 2.0;
+        let style = self.menu_style();
         let total = ctx.achievements.total();
         let unlocked = ctx.achievements.unlocked_count();
 
-        ctx.ui.label_centered("ACHIEVEMENTS", Vec2::new(cx, 30.0));
+        // Tall window covering most of the screen; the section list draws
+        // left-aligned inside its bounds.
+        let panel = MenuPanel::new("ACHIEVEMENTS", ctx.window_size / 2.0, ctx.window_size.x - 120.0, 15);
+        let first_y = panel.begin(ctx.ui, &style);
+        let rect = panel.panel_rect();
+
         ctx.ui.label_centered(
             &format!("{unlocked} / {total} unlocked"),
-            Vec2::new(cx, 54.0),
+            Vec2::new(ctx.window_size.x / 2.0, first_y - 8.0),
         );
 
-        // Left-align the list. Pixel-perfect centering of variable-length rows
-        // isn't worth the complexity — a fixed left margin reads fine.
-        let left = 40.0;
-        let mut y = 90.0;
+        let left = rect.x + 28.0;
+        let mut y = first_y + 18.0;
 
         let locked_color = Color::new(0.45, 0.45, 0.5, 1.0);
         let unlocked_color = Color::new(1.0, 0.85, 0.25, 1.0);
@@ -84,34 +88,26 @@ impl PongGame {
             y += 6.0;
         }
 
-        ctx.ui.label_centered("ESC or SPACE to go back", Vec2::new(cx, ctx.window_size.y - 20.0));
+        panel.hint(ctx.ui, "ESC or SPACE to go back", &style);
     }
 
     fn draw_difficulty(&self, ctx: &mut GameContext, selection: u8) {
-        let cx = ctx.window_size.x / 2.0;
-
-        ctx.ui.label_centered("SELECT DIFFICULTY", Vec2::new(cx, 150.0));
-
+        let style = self.menu_style();
+        let panel = MenuPanel::new("SELECT DIFFICULTY", ctx.window_size / 2.0, 360.0, 3);
+        let mut y = panel.begin(ctx.ui, &style);
         let items = [Difficulty::Easy, Difficulty::Medium, Difficulty::Hard];
         for (i, diff) in items.iter().enumerate() {
-            let prefix = if i as u8 == selection { "> " } else { "  " };
-            ctx.ui.label_centered(&format!("{prefix}{}", diff.label()), Vec2::new(cx, 240.0 + i as f32 * 30.0));
+            y = panel.item(ctx.ui, y, diff.label(), i as u8 == selection, &style);
         }
-
-        ctx.ui.label_centered("SPACE to confirm, ESC to go back", Vec2::new(cx, 380.0));
+        panel.hint(ctx.ui, "SPACE to confirm - ESC to go back", &style);
     }
 
     fn draw_chaos(&self, ctx: &mut GameContext, selection: u8) {
-        let cx = ctx.window_size.x / 2.0;
-
-        ctx.ui.label_centered("SELECT CHAOS MODE", Vec2::new(cx, 130.0));
-
+        let style = self.menu_style();
+        let panel = MenuPanel::new("SELECT CHAOS MODE", ctx.window_size / 2.0, 400.0, 4);
+        let mut y = panel.begin(ctx.ui, &style);
         for (i, mode) in ChaosMode::ALL.iter().enumerate() {
-            let prefix = if i as u8 == selection { "> " } else { "  " };
-            ctx.ui.label_centered(
-                &format!("{prefix}{}", mode.label()),
-                Vec2::new(cx, 200.0 + i as f32 * 30.0),
-            );
+            y = panel.item(ctx.ui, y, mode.label(), i as u8 == selection, &style);
         }
 
         let hint = match ChaosMode::ALL[selection as usize] {
@@ -120,8 +116,7 @@ impl PongGame {
             ChaosMode::Ridiculous => "Match starts with two balls.",
             ChaosMode::Insiculous => "Two balls AND each doubles on paddle hits.",
         };
-        ctx.ui.label_centered(hint, Vec2::new(cx, 360.0));
-        ctx.ui.label_centered("SPACE to confirm, ESC to go back", Vec2::new(cx, 400.0));
+        panel.hint(ctx.ui, hint, &style);
     }
 
     fn draw_gameplay_hud(&self, ctx: &mut GameContext) {
@@ -150,7 +145,7 @@ impl PongGame {
         match &self.state {
             GameState::Serving => {
                 ctx.ui.label_centered("Press SPACE to serve", Vec2::new(cx, cy - 50.0));
-                ctx.ui.label_centered("ESC for title screen", Vec2::new(cx, cy - 24.0));
+                ctx.ui.label_centered("ESC to pause", Vec2::new(cx, cy - 24.0));
             }
             GameState::GameOver { left_wins } => {
                 let msg = match (self.settings.mode, *left_wins) {
@@ -159,11 +154,18 @@ impl PongGame {
                     (GameMode::TwoPlayer, true) => "PLAYER 1 WINS!",
                     (GameMode::TwoPlayer, false) => "PLAYER 2 WINS!",
                 };
-                ctx.ui.label_centered(msg, Vec2::new(cx, cy - 60.0));
-                ctx.ui.label_centered("SPACE to play again", Vec2::new(cx, cy - 34.0));
-                ctx.ui.label_centered("ESC for title screen", Vec2::new(cx, cy - 8.0));
+                let style = self.menu_style();
+                let panel = MenuPanel::new(msg, Vec2::new(cx, cy), 340.0, 1);
+                let y = panel.begin(ctx.ui, &style);
+                panel.line(ctx.ui, y, "SPACE to play again", &style);
+                panel.hint(ctx.ui, "ESC for title screen", &style);
             }
             _ => {}
+        }
+
+        if self.pause.is_active() {
+            let style = self.menu_style();
+            self.pause.draw(ctx.ui, ctx.window_size, &style);
         }
     }
 }

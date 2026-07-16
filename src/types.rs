@@ -203,6 +203,8 @@ pub(crate) struct PongGame {
     /// lines. Toggle with F1. Useful for confirming collider geometry lines
     /// up with sprite art.
     pub(crate) debug_colliders: bool,
+    /// Engine pause menu (Esc/Start toggles during a match).
+    pub(crate) pause: PauseMenu,
 }
 
 impl PongGame {
@@ -226,6 +228,7 @@ impl Default for PongGame {
             frame_count: 0,
             grid: None,
             debug_colliders: false,
+            pause: PauseMenu::new(),
         }
     }
 }
