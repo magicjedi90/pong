@@ -27,8 +27,8 @@ impl PongGame {
             ctx.ui.label_centered(&format!("{prefix}{item}"), Vec2::new(cx, 240.0 + i as f32 * 30.0));
         }
 
-        ctx.ui.label_centered("W/S or Arrows to navigate", Vec2::new(cx, 400.0));
-        ctx.ui.label_centered("SPACE to confirm", Vec2::new(cx, 424.0));
+        ctx.ui.label_centered("W/S, Arrows, or D-Pad to navigate", Vec2::new(cx, 400.0));
+        ctx.ui.label_centered("SPACE or (A) to confirm", Vec2::new(cx, 424.0));
     }
 
     fn draw_achievements(&self, ctx: &mut GameContext) {

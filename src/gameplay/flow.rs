@@ -7,21 +7,24 @@ use crate::types::*;
 use super::balls::serve_direction;
 
 impl PongGame {
-    /// State-transition keys during a match: serve from `Serving`, restart or
-    /// bail to the title screen from `GameOver`.
+    /// State transitions during a match: serve from `Serving`, restart or
+    /// bail to the title screen from `GameOver`. Either player's primary
+    /// action (Space/Enter/pad A) or menu action (Escape/pad Start) counts.
     pub(crate) fn handle_gameplay_input(&mut self, ctx: &mut GameContext) {
+        let primary = ctx.players.just_activated_any(GameAction::Action1, ctx.input);
+        let menu = ctx.players.just_activated_any(GameAction::Menu, ctx.input);
         match &self.state {
             GameState::Serving => {
-                if ctx.input.is_key_just_pressed(KeyCode::Escape) {
+                if menu {
                     self.reset_to_title(ctx.world);
-                } else if ctx.input.is_key_just_pressed(KeyCode::Space) {
+                } else if primary {
                     self.serve(ctx);
                 }
             }
             GameState::GameOver { .. } => {
-                if ctx.input.is_key_just_pressed(KeyCode::Space) {
+                if primary {
                     self.start_game(ctx.world);
-                } else if ctx.input.is_key_just_pressed(KeyCode::Escape) {
+                } else if menu {
                     self.reset_to_title(ctx.world);
                 }
             }
